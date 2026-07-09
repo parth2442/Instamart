@@ -7,7 +7,7 @@ import * as db from '../database.js';
 import { vendingMachineRows } from '../handlers/vending.js';
 import * as res from '../response.js';
 import { sendHelp } from '../help.js';
-import { sendRules } from '../rules.js';
+import { sendTc } from '../rules.js';
 
 // Helper to safely send messages (auto-wraps strings in gold Container-style embeds)
 function send(msg: Message, content: string | EmbedBuilder | { embeds: EmbedBuilder[]; components?: any[] }) {
@@ -242,10 +242,10 @@ export function registerAll() {
     send(msg, `${EMOJI.success} Announcement sent!`);
   });
 
-  // ── Rules (Admin) ──
-  register('rules', async (msg) => {
+  // ── T&C (Admin) ──
+  register('tc', async (msg) => {
     if (!isAdmin(msg)) { send(msg, `${EMOJI.error} No permission!`); return; }
-    await sendRules(msg);
+    await sendTc(msg);
   });
 
   // ── Post Shop ──

@@ -1,40 +1,40 @@
 import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Interaction, GuildMember, GuildTextBasedChannel } from 'discord.js';
 import { COLORS } from './config.js';
 
-const RULES_CHANNEL_ID = process.env.RULES_CHANNEL_ID || '';
+const TC_CHANNEL_ID = process.env.TC_CHANNEL_ID || '';
 const VERIFIED_ROLE_ID = process.env.VERIFIED_ROLE_ID || '';
 
 const FOOTER = 'designed by Parth.cd';
 
-function rulesEmbed(): EmbedBuilder {
+function tcEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(COLORS.gold)
-    .setTitle('\u{1F6E1}\u{FE0F} Server Rules')
+    .setTitle('\u{1F4DC} Terms & Conditions')
     .setDescription(
-      '1. Be respectful to everyone\n' +
-      '2. No spamming or advertising\n' +
-      '3. Follow Discord ToS\n' +
-      '4. Use appropriate channels\n' +
-      '5. No NSFW content\n' +
-      '6. Staff decisions are final\n\n' +
-      'Click the button below to verify and access the server.'
+      'By using this server, you agree to:\n\n' +
+      '1. Follow all Discord Terms of Service\n' +
+      '2. Respect all members and staff\n' +
+      '3. No spamming, scamming, or harassment\n' +
+      '4. No inappropriate content\n' +
+      '5. Staff decisions are final\n\n' +
+      'Click the button below to accept and access the server.'
     )
     .setFooter({ text: FOOTER });
 }
 
-export function rulesView(): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
+export function tcView(): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('accept_rules')
-      .setLabel('I will follow the rules')
+      .setCustomId('accept_tc')
+      .setLabel('I have read all the terms and conditions')
       .setStyle(ButtonStyle.Success)
       .setEmoji('\u{2705}')
   );
-  return { embeds: [rulesEmbed()], components: [row] };
+  return { embeds: [tcEmbed()], components: [row] };
 }
 
-export async function handleRulesAccept(interaction: Interaction) {
-  if (!interaction.isButton() || interaction.customId !== 'accept_rules') return;
+export async function handleTcAccept(interaction: Interaction) {
+  if (!interaction.isButton() || interaction.customId !== 'accept_tc') return;
   await interaction.deferReply({ ephemeral: true });
 
   if (!VERIFIED_ROLE_ID) {
@@ -50,15 +50,15 @@ export async function handleRulesAccept(interaction: Interaction) {
 
   try {
     await member.roles.add(VERIFIED_ROLE_ID);
-    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLORS.gold).setDescription('Verified! You now have access to the server.').setFooter({ text: FOOTER })] });
+    await interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLORS.gold).setDescription('Accepted! You now have access to the server.').setFooter({ text: FOOTER })] });
   } catch {
     await interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLORS.gold).setDescription('Failed to add role. Contact staff.').setFooter({ text: FOOTER })] });
   }
 }
 
-// ── Send rules (admin command) ──
-export async function sendRules(msg: Message) {
-  const view = rulesView();
+// ── Send T&C (admin command) ──
+export async function sendTc(msg: Message) {
+  const view = tcView();
   const ch = msg.channel as any;
   await ch.send(view);
 }

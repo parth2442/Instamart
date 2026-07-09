@@ -18,7 +18,7 @@ import {
 } from './handlers/vending.js';
 import { handleCheckoutModal } from './handlers/modals.js';
 import { handleHelpCategory, handleHelpBack } from './help.js';
-import { handleRulesAccept } from './rules.js';
+import { handleTcAccept } from './rules.js';
 
 // Init DB
 initDB();
@@ -92,8 +92,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton()) {
       const cid = interaction.customId;
 
-      if (cid === 'accept_rules') {
-        await handleRulesAccept(interaction);
+      if (cid === 'accept_tc') {
+        await handleTcAccept(interaction);
         return;
       }
 
