@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InstaMart Panel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f13; color: #e0e0e0; min-height: 100vh; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+  /* Login */
+  #login { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; gap: 20px; }
+  #login h1 { font-size: 2rem; color: #D4AF37; letter-spacing: 2px; }
+  #login input { padding: 14px 20px; border: 1px solid #333; border-radius: 8px; background: #1a1a24; color: #fff; font-size: 1rem; width: 300px; outline: none; transition: border .2s; }
+  #login input:focus { border-color: #D4AF37; }
+  #login button { padding: 14px 40px; border: none; border-radius: 8px; background: #D4AF37; color: #000; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+  #login button:hover { opacity: .85; }
+  #login .error { color: #ff4444; font-size: .9rem; }
+
+  /* Dashboard */
+  #dashboard { display: none; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 16px 20px; background: #1a1a24; border-radius: 12px; border: 1px solid #2a2a35; }
+  .header h1 { font-size: 1.4rem; color: #D4AF37; }
+  .header .status { font-size: .85rem; color: #888; }
+  .header .logout { padding: 8px 20px; border: 1px solid #333; border-radius: 6px; background: transparent; color: #e0e0e0; cursor: pointer; font-size: .85rem; }
+  .header .logout:hover { border-color: #ff4444; color: #ff4444; }
+
+  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+
+  .product-card { background: #1a1a24; border: 1px solid #2a2a35; border-radius: 12px; padding: 16px; transition: border .2s; }
+  .product-card:hover { border-color: #D4AF37; }
+  .product-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .product-card .slot { font-size: .75rem; color: #888; background: #2a2a35; padding: 2px 8px; border-radius: 4px; }
+  .product-card .name { font-weight: 600; font-size: 1rem; }
+  .product-card .meta { display: flex; gap: 12px; font-size: .8rem; color: #888; margin-bottom: 12px; }
+  .product-card .meta span { display: flex; align-items: center; gap: 4px; }
+  .product-card .meta .available { color: #4caf50; }
+  .product-card .meta .sold { color: #ff9800; }
+
+  .product-card textarea { width: 100%; padding: 10px; border: 1px solid #333; border-radius: 6px; background: #0f0f13; color: #e0e0e0; font-size: .85rem; font-family: 'Courier New', monospace; resize: vertical; min-height: 80px; outline: none; transition: border .2s; }
+  .product-card textarea:focus { border-color: #D4AF37; }
+  .product-card textarea::placeholder { color: #555; }
+
+  .product-card .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .product-card .actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-size: .85rem; font-weight: 500; cursor: pointer; transition: opacity .2s; }
+  .product-card .actions button:hover { opacity: .85; }
+  .btn-add { background: #D4AF37; color: #000; }
+  .btn-view { background: #2a2a35; color: #e0e0e0; }
+
+  .result { margin-top: 8px; font-size: .85rem; padding: 6px 10px; border-radius: 6px; display: none; }
+  .result.success { display: block; background: #1b3d1b; color: #4caf50; border: 1px solid #2e7d32; }
+  .result.error { display: block; background: #3d1b1b; color: #ff4444; border: 1px solid #7d2e2e; }
+
+  .codes-panel { position: fixed; top: 0; right: -500px; width: 480px; height: 100vh; background: #1a1a24; border-left: 1px solid #2a2a35; transition: right .3s; z-index: 100; overflow-y: auto; }
+  .codes-panel.open { right: 0; }
+  .codes-panel .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #2a2a35; }
+  .codes-panel .panel-header h2 { font-size: 1.1rem; }
+  .codes-panel .close { padding: 6px 14px; border: 1px solid #333; border-radius: 6px; background: transparent; color: #e0e0e0; cursor: pointer; }
+  .codes-panel .close:hover { border-color: #ff4444; }
+  .codes-list { padding: 16px 20px; }
+  .code-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1f1f2a; font-size: .85rem; font-family: 'Courier New', monospace; }
+  .code-row .sold { color: #ff9800; }
+  .code-row .avail { color: #4caf50; }
+
+  .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); z-index: 99; }
+  .overlay.show { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Login -->
+  <div id="login">
+    <h1>🛒 INSTAMART</h1>
+    <p style="color:#666;font-size:.9rem;">Admin Panel</p>
+    <div style="position:relative;width:300px">
+      <input type="password" id="password" placeholder="Enter password" style="width:100%;padding-right:44px" onkeydown="if(event.key==='Enter') login()">
+      <button id="togglePass" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#888;cursor:pointer;font-size:1.2rem;padding:8px" onclick="togglePassword()">👁️</button>
+    </div>
+    <button onclick="login()">Login</button>
+    <p class="error" id="loginError"></p>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="header">
+      <div>
+        <h1>📦 Products</h1>
+        <p class="status" id="status"></p>
+      </div>
+      <button class="logout" onclick="logout()">Logout</button>
+    </div>
+    <div class="products-grid" id="productsGrid"></div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="closeCodes()"></div>
+
+<!-- Codes Panel -->
+<div class="codes-panel" id="codesPanel">
+  <div class="panel-header">
+    <h2 id="panelTitle">Codes</h2>
+    <button class="close" onclick="closeCodes()">✕</button>
+  </div>
+  <div class="codes-list" id="codesList"></div>
+</div>
+
+<script>
+let token = localStorage.getItem('token');
+if (token) showDashboard();
+
+function togglePassword() {
+  const inp = document.getElementById('password');
+  const btn = document.getElementById('togglePass');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁️'; }
+}
+
+async function login() {
+  const pass = document.getElementById('password').value;
+  const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass }) });
+  const data = await res.json();
+  if (res.ok) {
+    localStorage.setItem('token', data.token);
+    showDashboard();
+  } else {
+    document.getElementById('loginError').textContent = 'Wrong password!';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login').style.display = 'flex';
+}
+
+async function showDashboard() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  await loadProducts();
+}
+
+async function loadProducts() {
+  const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+  const products = await res.json();
+  document.getElementById('status').textContent = `${products.length} products`;
+
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = products.map(p => `
+    <div class="product-card">
+      <div class="top">
+        <span class="name">${p.category_emoji} ${p.name}</span>
+        <span class="slot">${p.slot_id}</span>
+      </div>
+      <div class="meta">
+        <span>💰 ₹${p.price}</span>
+        <span>📦 ${p.stock === -1 ? '∞' : p.stock}</span>
+        <span class="available">✅ ${p.available_codes} avail</span>
+        <span class="sold">📤 ${p.sold_codes} sold</span>
+      </div>
+      <textarea id="codes-${p.id}" placeholder="Paste codes here, one per line..."></textarea>
+      <div class="actions">
+        <button class="btn-add" onclick="addCodes(${p.id})">+ Add Codes</button>
+        <button class="btn-view" onclick="viewCodes(${p.id}, '${p.name}')">📋 View</button>
+      </div>
+      <div class="result" id="result-${p.id}"></div>
+    </div>
+  `).join('');
+}
+
+async function addCodes(productId) {
+  const ta = document.getElementById(`codes-${productId}`);
+  const raw = ta.value.trim();
+  if (!raw) return;
+
+  const codes = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  const res = await fetch(`/api/products/${productId}/stock`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ codes }),
+  });
+  const data = await res.json();
+  const el = document.getElementById(`result-${productId}`);
+  if (res.ok) {
+    el.className = 'result success';
+    el.textContent = `✅ ${data.added} codes added (${data.available} avail, ${data.sold} sold)`;
+    el.style.display = 'block';
+    ta.value = '';
+    loadProducts();
+  } else {
+    el.className = 'result error';
+    el.textContent = `❌ ${data.error}`;
+    el.style.display = 'block';
+  }
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+async function viewCodes(productId, name) {
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('codesPanel').classList.add('open');
+  document.getElementById('panelTitle').textContent = `📋 ${name} Codes`;
+
+  const res = await fetch(`/api/products/${productId}/inventory`, { headers: { 'Authorization': `Bearer ${token}` } });
+  const data = await res.json();
+  const list = document.getElementById('codesList');
+  list.innerHTML = data.codes.length === 0 ? '<p style="color:#666">No codes yet.</p>' :
+    data.codes.map(c => `
+      <div class="code-row">
+        <span>${c.code}</span>
+        <span class="${c.is_sold ? 'sold' : 'avail'}">${c.is_sold ? 'Sold' : 'Available'}</span>
+      </div>
+    `).join('');
+}
+
+function closeCodes() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('codesPanel').classList.remove('open');
+}
+</script>
+</body>
+</html>
