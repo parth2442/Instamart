@@ -123,6 +123,7 @@ export function getUserTotalSpent(id: string): number {
 }
 
 export function updateBalance(id: string, amount: number) {
+  ensureUser(id);
   db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(amount, id);
 }
 

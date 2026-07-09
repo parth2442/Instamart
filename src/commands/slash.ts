@@ -50,7 +50,6 @@ export function buildSlashCommands() {
       .addNumberOption(opt => opt.setName('amount').setDescription('Amount of coins').setRequired(true))
       .addUserOption(opt => opt.setName('user').setDescription('User to give to').setRequired(true)),
     new SlashCommandBuilder().setName('referral').setDescription('\u{1F517} View your referral code'),
-    new SlashCommandBuilder().setName('giveaway').setDescription('\u{1F389} Enter the giveaway'),
     new SlashCommandBuilder().setName('help').setDescription('Show available commands'),
     new SlashCommandBuilder().setName('kick')
       .setDescription('Kick a member')
@@ -153,13 +152,6 @@ export function registerSlashHandlers() {
     const code = db.getReferralCode(interaction.user.id);
     const count = db.getReferralCount(interaction.user.id);
     await interaction.editReply({ embeds: [referralEmbed(code, count, botAvatar(interaction))] });
-  });
-
-  registerSlash('giveaway', async (interaction) => {
-    await interaction.deferReply({ ephemeral: true });
-    db.ensureUser(interaction.user.id);
-    db.addGiveawayParticipant(interaction.user.id, interaction.channelId);
-    await interaction.editReply({ embeds: [res.info(`You've entered the giveaway!`, EMOJI.gift)] });
   });
 
   registerSlash('help', async (interaction) => {

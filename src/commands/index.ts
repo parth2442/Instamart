@@ -7,6 +7,7 @@ import * as db from '../database.js';
 import { vendingMachineRows } from '../handlers/vending.js';
 import * as res from '../response.js';
 import { sendHelp } from '../help.js';
+import { sendRules } from '../rules.js';
 
 // Helper to safely send messages (auto-wraps strings in gold Container-style embeds)
 function send(msg: Message, content: string | EmbedBuilder | { embeds: EmbedBuilder[]; components?: any[] }) {
@@ -126,17 +127,7 @@ export function registerAll() {
     send(msg, referralEmbed(code, count, botAvatar(msg)));
   });
 
-  // ── Giveaway ──
-  register('giveaway', (msg) => {
-    db.ensureUser(msg.author.id);
-    db.addGiveawayParticipant(msg.author.id, msg.channelId);
-    send(msg, `${EMOJI.gift} You've entered the giveaway!`);
-  });
-  register('ga', (msg) => {
-    db.ensureUser(msg.author.id);
-    db.addGiveawayParticipant(msg.author.id, msg.channelId);
-    send(msg, `${EMOJI.gift} You've entered the giveaway!`);
-  });
+  // ── Giveaway ── (removed)
 
   // ── Kick ──
   register('kick', async (msg, args) => {
@@ -249,6 +240,12 @@ export function registerAll() {
       .setFooter({ text: `Announced by ${msg.author.tag}` });
     await channel.send({ embeds: [embed] });
     send(msg, `${EMOJI.success} Announcement sent!`);
+  });
+
+  // ── Rules (Admin) ──
+  register('rules', async (msg) => {
+    if (!isAdmin(msg)) { send(msg, `${EMOJI.error} No permission!`); return; }
+    await sendRules(msg);
   });
 
   // ── Post Shop ──

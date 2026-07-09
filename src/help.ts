@@ -3,8 +3,7 @@ import { COLORS, EMOJI, config } from './config.js';
 
 const FOOTER = 'designed by Parth.cd';
 const INVITE_URL = 'https://discord.com/oauth2/authorize?client_id=1492655770859339976&scope=bot+applications.commands&permissions=8';
-const SUPPORT_URL = 'https://discord.gg/instamart';
-const GITHUB_URL = 'https://github.com/parth2442/Instamart';
+const SUPPORT_URL = 'https://discord.gg/bGAQCMePMm';
 
 interface Category {
   id: string;
@@ -68,15 +67,6 @@ const categories: Category[] = [
       { name: '$announce', desc: '"title" "msg" [#channel] Send announcement' },
     ],
   },
-  {
-    id: 'other',
-    label: 'Other',
-    emoji: '\u{1F381}',
-    desc: 'Extra fun commands',
-    commands: [
-      { name: '$giveaway', desc: 'Enter the giveaway' },
-    ],
-  },
 ];
 
 function homeEmbed(botName: string, avatar: string): EmbedBuilder {
@@ -125,7 +115,6 @@ function linkButtons(): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setLabel('Invite Me').setStyle(ButtonStyle.Link).setURL(INVITE_URL).setEmoji('\u{1F517}'),
     new ButtonBuilder().setLabel('Support').setStyle(ButtonStyle.Link).setURL(SUPPORT_URL).setEmoji('\u{1F4AC}'),
-    new ButtonBuilder().setLabel('GitHub').setStyle(ButtonStyle.Link).setURL(GITHUB_URL).setEmoji('\u{2B50}'),
   );
 }
 
