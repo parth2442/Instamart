@@ -17,6 +17,7 @@ import {
   handleCartClear,
 } from './handlers/vending.js';
 import { handleCheckoutModal } from './handlers/modals.js';
+import { handleHelpCategory, handleHelpBack } from './help.js';
 
 // Init DB
 initDB();
@@ -76,9 +77,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isStringSelectMenu() && interaction.customId === 'select_category') {
-      await handleCategorySelect(interaction);
-      return;
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'select_category') {
+        await handleCategorySelect(interaction);
+        return;
+      }
+      if (interaction.customId === 'help_category') {
+        await handleHelpCategory(interaction);
+        return;
+      }
     }
 
     if (interaction.isButton()) {
@@ -99,6 +106,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (cid.startsWith('wish_')) {
         const productId = parseInt(cid.slice(5));
         await handleWishlistButton(interaction, productId);
+        return;
+      }
+
+      if (cid === 'help_back') {
+        await handleHelpBack(interaction);
         return;
       }
 

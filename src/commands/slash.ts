@@ -5,6 +5,7 @@ import { helpEmbed, balanceEmbed, cartEmbed, historyEmbed, wishlistEmbed, referr
 import { vendingMachineRows } from '../handlers/vending.js';
 import * as db from '../database.js';
 import * as res from '../response.js';
+import { sendHelpSlash } from '../help.js';
 
 type SlashHandler = (interaction: ChatInputCommandInteraction) => void | Promise<void>;
 
@@ -162,7 +163,7 @@ export function registerSlashHandlers() {
   });
 
   registerSlash('help', async (interaction) => {
-    await interaction.reply({ embeds: [helpEmbed(botAvatar(interaction))] });
+    await sendHelpSlash(interaction);
   });
 
   const noPerm = async (interaction: ChatInputCommandInteraction) => {

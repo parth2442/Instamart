@@ -6,6 +6,7 @@ import { helpEmbed, balanceEmbed, cartEmbed, historyEmbed, wishlistEmbed, referr
 import * as db from '../database.js';
 import { vendingMachineRows } from '../handlers/vending.js';
 import * as res from '../response.js';
+import { sendHelp } from '../help.js';
 
 // Helper to safely send messages (auto-wraps strings in gold Container-style embeds)
 function send(msg: Message, content: string | EmbedBuilder | { embeds: EmbedBuilder[]; components?: any[] }) {
@@ -43,9 +44,9 @@ function isWalletAdmin(msg: Message): boolean {
 export function registerAll() {
 
   // ── Help ──
-  register('help', (msg) => send(msg, helpEmbed(botAvatar(msg))));
-  register('h', (msg) => send(msg, helpEmbed(botAvatar(msg))));
-  register('commands', (msg) => send(msg, helpEmbed(botAvatar(msg))));
+  register('help', async (msg) => { await sendHelp(msg); });
+  register('h', async (msg) => { await sendHelp(msg); });
+  register('commands', async (msg) => { await sendHelp(msg); });
 
   // ── Balance ──
   register('balance', (msg) => {
