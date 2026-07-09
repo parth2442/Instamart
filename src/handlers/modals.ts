@@ -2,7 +2,12 @@ import { EMOJI } from '../config.js';
 import { formatCurrency, generateOrderId } from '../utils.js';
 import { deliveryEmbed, orderEmbed } from '../embeds.js';
 import * as db from '../database.js';
+import * as res from '../response.js';
 import { getPendingDirectBuy } from './vending.js';
+
+function botAvatar(interaction: any): string | undefined {
+  return interaction.client?.user?.displayAvatarURL({ forceStatic: false, size: 256 });
+}
 
 export async function handleCheckoutModal(interaction: any) {
   await interaction.deferReply({ ephemeral: true });
@@ -18,7 +23,7 @@ export async function handleCheckoutModal(interaction: any) {
     // Direct buy from slot button
     const product = db.getProductById(directBuyProductId);
     if (!product) {
-      await interaction.editReply({ content: `${EMOJI.error} Product not found!` });
+      await interaction.editReply({ embeds: [res.error('Product not found!')] });
       return;
     }
     // Create a fake cart item for processing
@@ -35,7 +40,7 @@ export async function handleCheckoutModal(interaction: any) {
   }
 
   if (items.length === 0) {
-    await interaction.editReply({ content: `${EMOJI.warning} Nothing to checkout!` });
+    await interaction.editReply({ embeds: [res.warning('Nothing to checkout!')] });
     return;
   }
 
@@ -47,15 +52,15 @@ export async function handleCheckoutModal(interaction: any) {
   if (couponCode) {
     couponUsed = db.getCoupon(couponCode);
     if (!couponUsed) {
-      await interaction.editReply({ content: `${EMOJI.error} Invalid coupon code!` });
+      await interaction.editReply({ embeds: [res.error('Invalid coupon code!')] });
       return;
     }
     if (couponUsed.max_uses > 0 && couponUsed.used_count >= couponUsed.max_uses) {
-      await interaction.editReply({ content: `${EMOJI.error} Coupon has reached max uses!` });
+      await interaction.editReply({ embeds: [res.error('Coupon has reached max uses!')] });
       return;
     }
     if (total < couponUsed.min_purchase) {
-      await interaction.editReply({ content: `${EMOJI.error} Minimum purchase of ${formatCurrency(couponUsed.min_purchase)} required!` });
+      await interaction.editReply({ embeds: [res.error(`Minimum purchase of ${formatCurrency(couponUsed.min_purchase)} required!`)] });
       return;
     }
     discount = Math.round(total * couponUsed.discount_percent) / 100;
@@ -66,7 +71,7 @@ export async function handleCheckoutModal(interaction: any) {
   // Check balance
   const bal = db.getUserBalance(interaction.user.id);
   if (bal < total) {
-    await interaction.editReply({ content: `${EMOJI.error} Insufficient balance! You need ${formatCurrency(total)} but have ${formatCurrency(bal)}` });
+    await interaction.editReply({ embeds: [res.error(`Insufficient balance! You need ${formatCurrency(total)} but have ${formatCurrency(bal)}`)] });
     return;
   }
 
@@ -100,23 +105,23 @@ export async function handleCheckoutModal(interaction: any) {
     db.clearCart(interaction.user.id);
   }
 
-  let desc = `${EMOJI.success} Order placed!\n**Order ID:** \`${orderId.slice(0, 8)}\`\n**Total Charged:** ${formatCurrency(total)}`;
+  let desc = `Order placed!\n**Order ID:** \`${orderId.slice(0, 8)}\`\n**Total Charged:** ${formatCurrency(total)}`;
   if (discount > 0) {
     desc += `\n**Discount:** -${formatCurrency(discount)} (${couponUsed?.discount_percent ?? 0}% off)`;
   }
 
   if (allAutoDelivered) {
     db.updateOrderStatus(orderId, 'completed');
-    desc += `\n${EMOJI.pkg} Items delivered via DM!`;
+    desc += `\nItems delivered via DM!`;
     const deliveredItems = db.getOrderItems(orderId);
     try {
-      await interaction.user.send({ embeds: [deliveryEmbed(deliveredItems)] });
+      await interaction.user.send({ embeds: [deliveryEmbed(deliveredItems, botAvatar(interaction))] });
     } catch {
-      desc += `\n${EMOJI.warning} Could not DM you. Check your privacy settings.`;
+      desc += `\nCould not DM you. Check your privacy settings.`;
     }
   } else {
-    desc += `\n${EMOJI.warning} Some items need manual delivery. Staff will DM you.`;
+    desc += `\nSome items need manual delivery. Staff will DM you.`;
   }
 
-  await interaction.editReply({ content: desc });
+  await interaction.editReply({ embeds: [res.info(desc, '\u{2705}')] });
 }

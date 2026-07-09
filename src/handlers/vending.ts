@@ -3,6 +3,7 @@ import { EMOJI } from '../config.js';
 import { formatCurrency, generateOrderId } from '../utils.js';
 import { vendingMachineEmbed, productDetailEmbed, cartEmbed, deliveryEmbed, orderEmbed } from '../embeds.js';
 import * as db from '../database.js';
+import * as res from '../response.js';
 import type { Category, Product } from '../types.js';
 
 // Store pending direct-buy product info (userId -> productId)
@@ -60,6 +61,10 @@ export function vendingMachineRows(cats: Category[], products: Product[]): Actio
   return rows;
 }
 
+function getBotAvatar(interaction: any): string | undefined {
+  return interaction.client?.user?.displayAvatarURL({ forceStatic: false, size: 256 });
+}
+
 export async function handleCategorySelect(interaction: any) {
   await interaction.deferUpdate();
   const catId = parseInt(interaction.values[0]);
@@ -67,7 +72,7 @@ export async function handleCategorySelect(interaction: any) {
   if (!cat) return;
   const products = db.getProductsByCategory(catId);
   const bal = db.getUserBalance(interaction.user.id);
-  const embed = vendingMachineEmbed(cat, products, bal);
+  const embed = vendingMachineEmbed(cat, products, bal, getBotAvatar(interaction));
   const rows = vendingMachineRows(db.getCategories(), products);
   await interaction.editReply({ embeds: [embed], components: rows });
 }
@@ -75,12 +80,12 @@ export async function handleCategorySelect(interaction: any) {
 export async function handleSlotButton(interaction: any, slotId: string) {
   const product = db.getProductBySlot(slotId);
   if (!product) {
-    await interaction.reply({ content: `${EMOJI.error} Product not found!`, ephemeral: true });
+    await interaction.reply({ embeds: [res.error('Product not found!')], ephemeral: true });
     return;
   }
 
   const bal = db.getUserBalance(interaction.user.id);
-  const embed = productDetailEmbed(product, bal);
+  const embed = productDetailEmbed(product, bal, getBotAvatar(interaction));
 
   const row = new ActionRowBuilder<ButtonBuilder>()
     .addComponents(
@@ -95,7 +100,7 @@ export async function handleBuyButton(interaction: any, productId: number) {
   db.ensureUser(interaction.user.id);
   const product = db.getProductById(productId);
   if (!product) {
-    await interaction.reply({ content: `${EMOJI.error} Product not found!`, ephemeral: true });
+    await interaction.reply({ embeds: [res.error('Product not found!')], ephemeral: true });
     return;
   }
 
@@ -123,12 +128,12 @@ export async function handleBuyButton(interaction: any, productId: number) {
 
     await interaction.showModal(modal);
   } else if (product.stock !== -1 && product.stock <= 0) {
-    await interaction.reply({ content: `${EMOJI.error} ${product.name} is sold out!`, ephemeral: true });
+    await interaction.reply({ embeds: [res.error(`${product.name} is sold out!`)], ephemeral: true });
     return;
   } else {
     // Manual stock - simple add to cart
     db.addToCart(interaction.user.id, productId, 1);
-    await interaction.reply({ content: `${EMOJI.cart} **${product.name}** added to cart!`, ephemeral: true });
+    await interaction.reply({ embeds: [res.info(`**${product.name}** added to cart!`, EMOJI.cart)], ephemeral: true });
   }
 }
 
@@ -136,25 +141,25 @@ export async function handleWishlistButton(interaction: any, productId: number) 
   db.ensureUser(interaction.user.id);
   const product = db.getProductById(productId);
   if (!product) {
-    await interaction.reply({ content: `${EMOJI.error} Product not found!`, ephemeral: true });
+    await interaction.reply({ embeds: [res.error('Product not found!')], ephemeral: true });
     return;
   }
   db.addToWishlist(interaction.user.id, productId);
-  await interaction.reply({ content: `${EMOJI.wishlist} **${product.name}** added to wishlist!`, ephemeral: true });
+  await interaction.reply({ embeds: [res.info(`**${product.name}** added to wishlist!`, EMOJI.wishlist)], ephemeral: true });
 }
 
 export async function handleViewCart(interaction: any) {
   db.ensureUser(interaction.user.id);
   const items = db.getCart(interaction.user.id);
   const total = db.getCartTotal(interaction.user.id);
-  await interaction.reply({ embeds: [cartEmbed(items, total)], ephemeral: true });
+  await interaction.reply({ embeds: [cartEmbed(items, total, getBotAvatar(interaction))], ephemeral: true });
 }
 
 export async function handleCartCheckout(interaction: any) {
   db.ensureUser(interaction.user.id);
   const items = db.getCart(interaction.user.id);
   if (items.length === 0) {
-    await interaction.reply({ content: `${EMOJI.warning} Your cart is empty!`, ephemeral: true });
+    await interaction.reply({ embeds: [res.warning('Your cart is empty!')], ephemeral: true });
     return;
   }
 
@@ -181,12 +186,12 @@ export async function handleBackToShop(interaction: any) {
   await interaction.deferUpdate();
   const cats = db.getCategories();
   if (cats.length === 0) {
-    await interaction.editReply({ content: `${EMOJI.error} No categories!`, components: [] });
+    await interaction.editReply({ embeds: [res.error('No categories!')], components: [] });
     return;
   }
   const products = db.getProductsByCategory(cats[0].id);
   const bal = db.getUserBalance(interaction.user.id);
-  const embed = vendingMachineEmbed(cats[0], products, bal);
+  const embed = vendingMachineEmbed(cats[0], products, bal, getBotAvatar(interaction));
   const rows = vendingMachineRows(cats, products);
   await interaction.editReply({ embeds: [embed], components: rows });
 }
@@ -203,7 +208,7 @@ export async function handleRefreshShop(interaction: any) {
   }
   const products = db.getProductsByCategory(catId);
   const bal = db.getUserBalance(interaction.user.id);
-  const embedUpdated = vendingMachineEmbed(cats[0], products, bal);
+  const embedUpdated = vendingMachineEmbed(cats[0], products, bal, getBotAvatar(interaction));
   const rows = vendingMachineRows(cats, products);
   await interaction.editReply({ embeds: [embedUpdated], components: rows });
 }
@@ -211,5 +216,5 @@ export async function handleRefreshShop(interaction: any) {
 export async function handleCartClear(interaction: any) {
   db.ensureUser(interaction.user.id);
   db.clearCart(interaction.user.id);
-  await interaction.reply({ content: `${EMOJI.success} Cart cleared!`, ephemeral: true });
+  await interaction.reply({ embeds: [res.success('Cart cleared!')], ephemeral: true });
 }

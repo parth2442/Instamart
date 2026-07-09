@@ -4,6 +4,7 @@ import { initDB } from './database.js';
 import { handlePrefix } from './prefix.js';
 import { registerAll } from './commands/index.js';
 import { registerSlashHandlers, getSlashHandler, buildSlashCommands } from './commands/slash.js';
+import * as res from './response.js';
 import {
   handleCategorySelect,
   handleSlotButton,
@@ -131,7 +132,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const reply = interaction.isRepliable() && !interaction.replied;
     if (reply) {
       try {
-        await interaction.reply({ content: 'An error occurred!', ephemeral: true });
+        await interaction.reply({ embeds: [res.error('An error occurred!')], ephemeral: true });
       } catch {}
     }
   }

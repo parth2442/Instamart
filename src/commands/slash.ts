@@ -4,6 +4,7 @@ import { formatCurrency, generateOrderId } from '../utils.js';
 import { helpEmbed, balanceEmbed, cartEmbed, historyEmbed, wishlistEmbed, referralEmbed, deliveryEmbed, orderEmbed } from '../embeds.js';
 import { vendingMachineRows } from '../handlers/vending.js';
 import * as db from '../database.js';
+import * as res from '../response.js';
 
 type SlashHandler = (interaction: ChatInputCommandInteraction) => void | Promise<void>;
 
@@ -15,6 +16,10 @@ export function registerSlash(name: string, handler: SlashHandler) {
 
 export function getSlashHandler(name: string): SlashHandler | undefined {
   return handlers.get(name);
+}
+
+function botAvatar(interaction: ChatInputCommandInteraction): string | undefined {
+  return interaction.client?.user?.displayAvatarURL({ forceStatic: false, size: 256 });
 }
 
 function isAdmin(interaction: ChatInputCommandInteraction): boolean {
@@ -92,7 +97,7 @@ export function registerSlashHandlers() {
     db.ensureUser(interaction.user.id);
     const bal = db.getUserBalance(interaction.user.id);
     const spent = db.getUserTotalSpent(interaction.user.id);
-    await interaction.editReply({ embeds: [balanceEmbed(interaction.user.id, bal, spent)] });
+    await interaction.editReply({ embeds: [balanceEmbed(interaction.user.id, bal, spent, botAvatar(interaction))] });
   });
 
   registerSlash('cart', async (interaction) => {
@@ -100,21 +105,21 @@ export function registerSlashHandlers() {
     db.ensureUser(interaction.user.id);
     const items = db.getCart(interaction.user.id);
     const total = db.getCartTotal(interaction.user.id);
-    await interaction.editReply({ embeds: [cartEmbed(items, total)] });
+    await interaction.editReply({ embeds: [cartEmbed(items, total, botAvatar(interaction))] });
   });
 
   registerSlash('history', async (interaction) => {
     await interaction.deferReply();
     db.ensureUser(interaction.user.id);
     const orders = db.getUserOrders(interaction.user.id);
-    await interaction.editReply({ embeds: [historyEmbed(orders)] });
+    await interaction.editReply({ embeds: [historyEmbed(orders, botAvatar(interaction))] });
   });
 
   registerSlash('wishlist', async (interaction) => {
     await interaction.deferReply();
     db.ensureUser(interaction.user.id);
     const items = db.getWishlist(interaction.user.id);
-    await interaction.editReply({ embeds: [wishlistEmbed(items)] });
+    await interaction.editReply({ embeds: [wishlistEmbed(items, botAvatar(interaction))] });
   });
 
   registerSlash('give', async (interaction) => {
@@ -122,23 +127,23 @@ export function registerSlashHandlers() {
     const amount = interaction.options.getNumber('amount', true);
     const target = interaction.options.getUser('user', true);
     if (target.id === interaction.user.id) {
-      await interaction.editReply({ content: `${EMOJI.error} You can't give coins to yourself!` });
+      await interaction.editReply({ embeds: [res.error("You can't give coins to yourself!")] });
       return;
     }
     if (amount <= 0) {
-      await interaction.editReply({ content: `${EMOJI.error} Invalid amount!` });
+      await interaction.editReply({ embeds: [res.error('Invalid amount!')] });
       return;
     }
     db.ensureUser(interaction.user.id);
     db.ensureUser(target.id);
     const bal = db.getUserBalance(interaction.user.id);
     if (bal < amount) {
-      await interaction.editReply({ content: `${EMOJI.error} Insufficient balance! You have ${formatCurrency(bal)}` });
+      await interaction.editReply({ embeds: [res.error(`Insufficient balance! You have ${formatCurrency(bal)}`)] });
       return;
     }
     db.updateBalance(interaction.user.id, -amount);
     db.updateBalance(target.id, amount);
-    await interaction.editReply({ content: `${EMOJI.success} ${formatCurrency(amount)} sent to ${target}!` });
+    await interaction.editReply({ embeds: [res.success(`${formatCurrency(amount)} sent to ${target}!`)] });
   });
 
   registerSlash('referral', async (interaction) => {
@@ -146,128 +151,111 @@ export function registerSlashHandlers() {
     db.ensureUser(interaction.user.id);
     const code = db.getReferralCode(interaction.user.id);
     const count = db.getReferralCount(interaction.user.id);
-    await interaction.editReply({ embeds: [referralEmbed(code, count)] });
+    await interaction.editReply({ embeds: [referralEmbed(code, count, botAvatar(interaction))] });
   });
 
   registerSlash('giveaway', async (interaction) => {
     await interaction.deferReply({ ephemeral: true });
     db.ensureUser(interaction.user.id);
     db.addGiveawayParticipant(interaction.user.id, interaction.channelId);
-    await interaction.editReply({ content: `${EMOJI.gift} You've entered the giveaway!` });
+    await interaction.editReply({ embeds: [res.info(`You've entered the giveaway!`, EMOJI.gift)] });
   });
 
   registerSlash('help', async (interaction) => {
-    await interaction.reply({ embeds: [helpEmbed()] });
+    await interaction.reply({ embeds: [helpEmbed(botAvatar(interaction))] });
   });
 
+  const noPerm = async (interaction: ChatInputCommandInteraction) => {
+    await interaction.reply({ embeds: [res.error('No permission!')], ephemeral: true });
+  };
+
   registerSlash('kick', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const target = interaction.options.getMember('user');
     const reason = interaction.options.getString('reason') || 'No reason';
     if (!target || !('kickable' in target)) {
-      await interaction.editReply({ content: `${EMOJI.error} Invalid user!` });
+      await interaction.editReply({ embeds: [res.error('Invalid user!')] });
       return;
     }
     await (target as any).kick(reason);
-    await interaction.editReply({ content: `${EMOJI.success} Kicked ${target.user.tag}: ${reason}` });
+    await interaction.editReply({ embeds: [res.success(`Kicked ${target.user.tag}: ${reason}`)] });
   });
 
   registerSlash('ban', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const target = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') || 'No reason';
     const deleteDays = interaction.options.getInteger('delete_days') ?? 0;
     await interaction.guild?.members.ban(target, { reason, deleteMessageDays: deleteDays });
-    await interaction.editReply({ content: `${EMOJI.success} Banned ${target.tag}: ${reason}` });
+    await interaction.editReply({ embeds: [res.success(`Banned ${target.tag}: ${reason}`)] });
   });
 
   registerSlash('mute', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const target = interaction.options.getMember('user');
     const duration = interaction.options.getInteger('duration', true);
     const reason = interaction.options.getString('reason') || 'No reason';
     if (!target || !('timeout' in target)) {
-      await interaction.editReply({ content: `${EMOJI.error} Invalid user!` });
+      await interaction.editReply({ embeds: [res.error('Invalid user!')] });
       return;
     }
     await (target as any).timeout(duration * 60 * 1000, reason);
-    await interaction.editReply({ content: `${EMOJI.success} Muted ${target.user.tag} for ${duration} min: ${reason}` });
+    await interaction.editReply({ embeds: [res.success(`Muted ${target.user.tag} for ${duration} min: ${reason}`)] });
   });
 
   registerSlash('unmute', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const target = interaction.options.getMember('user');
     if (!target || !('timeout' in target)) {
-      await interaction.editReply({ content: `${EMOJI.error} Invalid user!` });
+      await interaction.editReply({ embeds: [res.error('Invalid user!')] });
       return;
     }
     await (target as any).timeout(null);
-    await interaction.editReply({ content: `${EMOJI.success} Unmuted ${target.user.tag}` });
+    await interaction.editReply({ embeds: [res.success(`Unmuted ${target.user.tag}`)] });
   });
 
   registerSlash('purge', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const amount = interaction.options.getInteger('amount', true);
     if (amount < 1 || amount > 100) {
-      await interaction.editReply({ content: `${EMOJI.error} Amount must be 1-100!` });
+      await interaction.editReply({ embeds: [res.error('Amount must be 1-100!')] });
       return;
     }
     const msgs = await interaction.channel?.messages.fetch({ limit: Math.min(amount, 100) });
     if (msgs && interaction.channel && 'bulkDelete' in interaction.channel) {
       await (interaction.channel as any).bulkDelete(msgs, true);
-      await interaction.editReply({ content: `${EMOJI.success} Deleted ${msgs.size} messages` });
+      await interaction.editReply({ embeds: [res.success(`Deleted ${msgs.size} messages`)] });
     }
   });
 
   registerSlash('slowmode', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const secs = interaction.options.getInteger('seconds', true);
     if (secs < 0 || secs > 21600) {
-      await interaction.editReply({ content: `${EMOJI.error} Must be 0-21600!` });
+      await interaction.editReply({ embeds: [res.error('Must be 0-21600!')] });
       return;
     }
     if (interaction.channel && 'setRateLimitPerUser' in interaction.channel) {
       await (interaction.channel as any).setRateLimitPerUser(secs);
-      await interaction.editReply({ content: `${EMOJI.success} Slowmode set to ${secs}s` });
+      await interaction.editReply({ embeds: [res.success(`Slowmode set to ${secs}s`)] });
     }
   });
 
   registerSlash('announce', async (interaction) => {
-    if (!isAdmin(interaction)) {
-      await interaction.reply({ content: `${EMOJI.error} No permission!`, ephemeral: true });
-      return;
-    }
+    if (!isAdmin(interaction)) return noPerm(interaction);
     await interaction.deferReply();
     const title = interaction.options.getString('title', true);
     const message = interaction.options.getString('message', true);
     const channel = interaction.options.getChannel('channel') || interaction.channel;
     const pingEveryone = interaction.options.getBoolean('ping_everyone') || false;
     if (!channel || !('send' in channel)) {
-      await interaction.editReply({ content: `${EMOJI.error} Invalid channel!` });
+      await interaction.editReply({ embeds: [res.error('Invalid channel!')] });
       return;
     }
     const embed = new EmbedBuilder()
@@ -277,6 +265,6 @@ export function registerSlashHandlers() {
       .setFooter({ text: `Announced by ${interaction.user.tag}` });
     const content = pingEveryone ? '@everyone' : '';
     await (channel as any).send({ content, embeds: [embed] });
-    await interaction.editReply({ content: `${EMOJI.success} Announcement sent!` });
+    await interaction.editReply({ embeds: [res.success('Announcement sent!')] });
   });
 }

@@ -4,7 +4,9 @@ import { formatCurrency } from './utils.js';
 import type { Category, Product, CartItem, Order, OrderItem, InventoryItem } from './types.js';
 import { getProductById, getInventoryCount } from './database.js';
 
-export function vendingMachineEmbed(cat: Category, products: Product[], balance: number): EmbedBuilder {
+const FOOTER_TEXT = 'Designed by parth.cd';
+
+export function vendingMachineEmbed(cat: Category, products: Product[], balance: number, botAvatar?: string): EmbedBuilder {
   const stockIndicator = (stock: number): string => {
     if (stock === 0) return '```diff\n- SOLD OUT\n```';
     if (stock > 0 && stock <= 5) return `\`${stock} left\``;
@@ -20,17 +22,19 @@ export function vendingMachineEmbed(cat: Category, products: Product[], balance:
   }
   desc += `\u200B\n\u{1F53D} *Select a slot below to purchase*`;
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.vending}\u202FINSTAMART`)
+    .setTitle(`INSTAMART ${EMOJI.vending}`)
     .setDescription(desc)
-    .setFooter({ text: `Balance: ${formatCurrency(balance)}` });
+    .setFooter({ text: `Balance: ${formatCurrency(balance)} • ${FOOTER_TEXT}` });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function productDetailEmbed(product: Product, userBalance: number): EmbedBuilder {
+export function productDetailEmbed(product: Product, userBalance: number, botAvatar?: string): EmbedBuilder {
   const stockStr = product.stock >= 0 ? `${product.stock}` : 'Unlimited';
   const desc = product.description || `Premium ${product.name}`;
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.gold)
     .setTitle(`\`[${product.slot_id}]\` ${product.name}`)
     .setDescription(desc)
@@ -38,10 +42,13 @@ export function productDetailEmbed(product: Product, userBalance: number): Embed
       { name: 'Price', value: formatCurrency(product.price), inline: true },
       { name: 'Stock', value: stockStr, inline: true },
       { name: 'Balance', value: formatCurrency(userBalance), inline: true }
-    );
+    )
+    .setFooter({ text: FOOTER_TEXT });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function cartEmbed(items: CartItem[], total: number): EmbedBuilder {
+export function cartEmbed(items: CartItem[], total: number, botAvatar?: string): EmbedBuilder {
   let desc = '';
   if (items.length === 0) {
     desc = 'Your cart is empty!';
@@ -52,41 +59,49 @@ export function cartEmbed(items: CartItem[], total: number): EmbedBuilder {
       desc += `**\`${i + 1}\`** \`[${item.slot_id}]\` **${item.product_name}** x${item.quantity}\n${sub}\n\n`;
     }
   }
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.cart}\u202FCart`)
+    .setTitle(`${EMOJI.cart} Cart`)
     .setDescription(desc)
     .addFields({ name: '\u200B', value: `**Total:** ${formatCurrency(total)}`, inline: false })
-    .setFooter({ text: 'Checkout or keep browsing' });
+    .setFooter({ text: `Checkout or keep browsing • ${FOOTER_TEXT}` });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function balanceEmbed(userId: string, balance: number, totalSpent: number): EmbedBuilder {
-  return new EmbedBuilder()
+export function balanceEmbed(userId: string, balance: number, totalSpent: number, botAvatar?: string): EmbedBuilder {
+  const embed = new EmbedBuilder()
     .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.coin}\u202FWallet`)
+    .setTitle(`${EMOJI.coin} Wallet`)
     .addFields(
       { name: 'Balance', value: formatCurrency(balance), inline: true },
       { name: 'Total Spent', value: formatCurrency(totalSpent), inline: true }
-    );
+    )
+    .setFooter({ text: FOOTER_TEXT });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function orderEmbed(order: Order, items: OrderItem[]): EmbedBuilder {
+export function orderEmbed(order: Order, items: OrderItem[], botAvatar?: string): EmbedBuilder {
   let itemLines = '';
   for (const item of items) {
     itemLines += `\`${item.product_name}\` x${item.quantity} ─ ${formatCurrency(item.unit_price * item.quantity)}\n`;
   }
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.success)
-    .setTitle(`${EMOJI.invoice}\u202FOrder Confirmed`)
+    .setTitle(`${EMOJI.invoice} Order Confirmed`)
     .setDescription(`Order \`${order.id.slice(0, 8)}\``)
     .addFields(
       { name: 'Items', value: itemLines },
       { name: 'Total', value: formatCurrency(order.total_amount), inline: true },
       { name: 'Status', value: `\`${order.status}\``, inline: true }
-    );
+    )
+    .setFooter({ text: FOOTER_TEXT });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function deliveryEmbed(items: OrderItem[]): EmbedBuilder {
+export function deliveryEmbed(items: OrderItem[], botAvatar?: string): EmbedBuilder {
   let desc = '';
   for (const item of items) {
     const product = getProductById(item.product_id);
@@ -104,83 +119,96 @@ export function deliveryEmbed(items: OrderItem[]): EmbedBuilder {
       desc += `━━━━━━━━━━━━\n${EMOJI.pkg} **${item.product_name}** x${item.quantity} — \`${item.delivery_status}\`${codeStr}${howToStr}\n`;
     }
   }
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.success)
-    .setTitle(`${EMOJI.pkg}\u202FItems Delivered`)
-    .setDescription(desc);
+    .setTitle(`${EMOJI.pkg} Items Delivered`)
+    .setDescription(desc)
+    .setFooter({ text: FOOTER_TEXT });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function helpEmbed(): EmbedBuilder {
+export function helpEmbed(botAvatar?: string): EmbedBuilder {
   const bt = '`';
-  const desc =
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-    '\u{1F4B0} **Wallet**\n' +
-    `${bt}$balance${bt} / ${bt}$bal${bt} Check wallet\n` +
+
+  const walletSection =
+    `${EMOJI.coin} **Wallet**\n` +
+    `${bt}$balance${bt} Check your balance\n` +
     `${bt}$give${bt} <amount> @user Send coins\n` +
     `${bt}$cart${bt} View cart\n` +
     `${bt}$history${bt} Order history\n` +
-    `${bt}$wishlist${bt} Your wishlist\n\n` +
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-    '\u{2699}\u{FE0F} **Admin**\n' +
+    `${bt}$wishlist${bt} Your wishlist\n\n`;
+
+  const shopSection =
+    `${EMOJI.vending} **Shop**\n` +
     `${bt}$postshop${bt} [#channel] Post vending machine\n` +
-    `${bt}$restocker${bt} add|remove @user\n` +
-    `${bt}$walletadmin${bt} add|remove @user\n` +
-    `${bt}$stock${bt} SLOT add|bulk|list Codes\n` +
-    `${bt}$restock${bt} SLOT <amount> Set stock\n` +
+    `${bt}$stock${bt} SLOT add|bulk|list Manage codes\n` +
+    `${bt}$restock${bt} SLOT <amount> Set product stock\n\n`;
+
+  const adminSection = `${EMOJI.settings} **Admin**\n` +
+    `${bt}$admin${bt} products|orders|coupon|analytics\n` +
     `${bt}$deposit${bt} @user <amount> Add balance\n` +
-    `${bt}$admin${bt} products|orders|coupon\n\n` +
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-    '\u{1F6E1}\u{FE0F} **Moderation**\n' +
+    `${bt}$restocker${bt} add|remove @user Manage restockers\n` +
+    `${bt}$walletadmin${bt} add|remove @user\n\n`;
+
+  const modSection =
+    `${EMOJI.shield} **Moderation**\n` +
     `${bt}$kick${bt} @user [reason]\n` +
     `${bt}$ban${bt} @user [reason]\n` +
     `${bt}$mute${bt} @user <min> [reason]\n` +
     `${bt}$unmute${bt} @user\n` +
-    `${bt}$purge${bt} [1-100]\n` +
-    `${bt}$slowmode${bt} [0-21600]\n` +
+    `${bt}$purge${bt} [1-100] Bulk delete\n` +
+    `${bt}$slowmode${bt} [0-21600] Set slowmode\n` +
     `${bt}$announce${bt} "title" "msg" [#channel]`;
 
-  return new EmbedBuilder()
+  const desc = walletSection + shopSection + adminSection + modSection;
+
+  const embed = new EmbedBuilder()
     .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.vending}\u202FInstaMart`)
+    .setTitle(`InstaMart Help`)
     .setDescription(desc)
-    .setFooter({ text: 'Use / for slash commands  •  Prefix: $  •  instamart' });
+    .setFooter({ text: `Prefix: $ • ${FOOTER_TEXT}` });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function historyEmbed(orders: Order[]): EmbedBuilder {
+export function historyEmbed(orders: Order[], botAvatar?: string): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setColor(COLORS.gold)
+    .setTitle(`${EMOJI.invoice} Order History`)
+    .setFooter({ text: FOOTER_TEXT });
   if (orders.length === 0) {
-    return new EmbedBuilder()
-      .setColor(COLORS.gold)
-      .setTitle(`${EMOJI.invoice}\u202FOrder History`)
-      .setDescription('No orders yet.');
+    embed.setDescription('No orders yet.');
+  } else {
+    let desc = '';
+    for (const o of orders) {
+      desc += `\`${o.id.slice(0, 8)}\` • ${formatCurrency(o.total_amount)} • \`${o.status}\`\n`;
+    }
+    embed.setDescription(desc);
   }
-  let desc = '';
-  for (const o of orders) {
-    desc += `\`${o.id.slice(0, 8)}\` • ${formatCurrency(o.total_amount)} • \`${o.status}\`\n`;
-  }
-  return new EmbedBuilder()
-    .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.invoice}\u202FOrder History`)
-    .setDescription(desc);
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function wishlistEmbed(products: Product[]): EmbedBuilder {
+export function wishlistEmbed(products: Product[], botAvatar?: string): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setColor(COLORS.gold)
+    .setTitle(`${EMOJI.wishlist} Wishlist`)
+    .setFooter({ text: FOOTER_TEXT });
   if (products.length === 0) {
-    return new EmbedBuilder()
-      .setColor(COLORS.gold)
-      .setTitle(`${EMOJI.wishlist}\u202FWishlist`)
-      .setDescription('Your wishlist is empty!');
+    embed.setDescription('Your wishlist is empty!');
+  } else {
+    let desc = '';
+    for (const p of products) {
+      desc += `\`[${p.slot_id}]\` **${p.name}** ─ ${formatCurrency(p.price)}\n`;
+    }
+    embed.setDescription(desc);
   }
-  let desc = '';
-  for (const p of products) {
-    desc += `\`[${p.slot_id}]\` **${p.name}** ─ ${formatCurrency(p.price)}\n`;
-  }
-  return new EmbedBuilder()
-    .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.wishlist}\u202FWishlist`)
-    .setDescription(desc);
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function adminProductListEmbed(products: Product[], categories: Category[]): EmbedBuilder {
+export function adminProductListEmbed(products: Product[], categories: Category[], botAvatar?: string): EmbedBuilder {
   const catMap = new Map(categories.map(c => [c.id, c]));
   let desc = '';
   for (const p of products) {
@@ -190,15 +218,21 @@ export function adminProductListEmbed(products: Product[], categories: Category[
     desc += `**\`[${p.slot_id}]\`** ${p.name} ${status}\n${formatCurrency(p.price)} ${stockStr} ${cat?.emoji ?? ''}\n\n`;
   }
   if (!desc) desc = 'No products found.';
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.warning)
-    .setTitle(`${EMOJI.settings}\u202FProducts List`)
-    .setDescription(desc);
+    .setTitle(`${EMOJI.settings} Products List`)
+    .setDescription(desc)
+    .setFooter({ text: FOOTER_TEXT });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }
 
-export function referralEmbed(code: string | null, count: number): EmbedBuilder {
-  return new EmbedBuilder()
+export function referralEmbed(code: string | null, count: number, botAvatar?: string): EmbedBuilder {
+  const embed = new EmbedBuilder()
     .setColor(COLORS.gold)
-    .setTitle(`${EMOJI.referral}\u202FReferral`)
-    .setDescription(code ? `Your code: \`${code}\`\n**${count}** users joined using your link!` : 'Error loading referral code.');
+    .setTitle(`${EMOJI.referral} Referral`)
+    .setDescription(code ? `Your code: \`${code}\`\n**${count}** users joined using your link!` : 'Error loading referral code.')
+    .setFooter({ text: FOOTER_TEXT });
+  if (botAvatar) embed.setThumbnail(botAvatar);
+  return embed;
 }

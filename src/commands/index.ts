@@ -5,13 +5,18 @@ import { formatCurrency, generateOrderId } from '../utils.js';
 import { helpEmbed, balanceEmbed, cartEmbed, historyEmbed, wishlistEmbed, referralEmbed, deliveryEmbed, orderEmbed, vendingMachineEmbed, productDetailEmbed, adminProductListEmbed } from '../embeds.js';
 import * as db from '../database.js';
 import { vendingMachineRows } from '../handlers/vending.js';
+import * as res from '../response.js';
 
-// Helper to safely send messages
+// Helper to safely send messages (auto-wraps strings in gold Container-style embeds)
 function send(msg: Message, content: string | EmbedBuilder | { embeds: EmbedBuilder[]; components?: any[] }) {
   const ch = msg.channel as any;
-  if (typeof content === 'string') return ch.send(content);
+  if (typeof content === 'string') return ch.send({ embeds: [res.gold(content)] });
   if (content instanceof EmbedBuilder) return ch.send({ embeds: [content] });
   return ch.send(content);
+}
+
+function botAvatar(msg: Message): string | undefined {
+  return msg.client.user?.displayAvatarURL({ forceStatic: false, size: 256 });
 }
 
 // ─── Auth helpers ───
@@ -38,22 +43,22 @@ function isWalletAdmin(msg: Message): boolean {
 export function registerAll() {
 
   // ── Help ──
-  register('help', (msg) => send(msg, helpEmbed()));
-  register('h', (msg) => send(msg, helpEmbed()));
-  register('commands', (msg) => send(msg, helpEmbed()));
+  register('help', (msg) => send(msg, helpEmbed(botAvatar(msg))));
+  register('h', (msg) => send(msg, helpEmbed(botAvatar(msg))));
+  register('commands', (msg) => send(msg, helpEmbed(botAvatar(msg))));
 
   // ── Balance ──
   register('balance', (msg) => {
     db.ensureUser(msg.author.id);
     const bal = db.getUserBalance(msg.author.id);
     const spent = db.getUserTotalSpent(msg.author.id);
-    send(msg, balanceEmbed(msg.author.id, bal, spent));
+    send(msg, balanceEmbed(msg.author.id, bal, spent, botAvatar(msg)));
   });
   register('bal', (msg) => {
     db.ensureUser(msg.author.id);
     const bal = db.getUserBalance(msg.author.id);
     const spent = db.getUserTotalSpent(msg.author.id);
-    send(msg, balanceEmbed(msg.author.id, bal, spent));
+    send(msg, balanceEmbed(msg.author.id, bal, spent, botAvatar(msg)));
   });
 
   // ── Cart ──
@@ -61,21 +66,21 @@ export function registerAll() {
     db.ensureUser(msg.author.id);
     const items = db.getCart(msg.author.id);
     const total = db.getCartTotal(msg.author.id);
-    send(msg, cartEmbed(items, total));
+    send(msg, cartEmbed(items, total, botAvatar(msg)));
   });
 
   // ── History ──
   register('history', (msg) => {
     db.ensureUser(msg.author.id);
     const orders = db.getUserOrders(msg.author.id);
-    send(msg, historyEmbed(orders));
+    send(msg, historyEmbed(orders, botAvatar(msg)));
   });
 
   // ── Wishlist ──
   register('wishlist', (msg) => {
     db.ensureUser(msg.author.id);
     const items = db.getWishlist(msg.author.id);
-    send(msg, wishlistEmbed(items));
+    send(msg, wishlistEmbed(items, botAvatar(msg)));
   });
 
   // ── Give ──
@@ -111,13 +116,13 @@ export function registerAll() {
     db.ensureUser(msg.author.id);
     const code = db.getReferralCode(msg.author.id);
     const count = db.getReferralCount(msg.author.id);
-    send(msg, referralEmbed(code, count));
+    send(msg, referralEmbed(code, count, botAvatar(msg)));
   });
   register('refer', (msg) => {
     db.ensureUser(msg.author.id);
     const code = db.getReferralCode(msg.author.id);
     const count = db.getReferralCount(msg.author.id);
-    send(msg, referralEmbed(code, count));
+    send(msg, referralEmbed(code, count, botAvatar(msg)));
   });
 
   // ── Giveaway ──
@@ -258,7 +263,7 @@ export function registerAll() {
     if (cats.length === 0) { send(msg, `${EMOJI.error} No categories! Add one first.`); return; }
     const prods = db.getProductsByCategory(cats[0].id);
     const bal = db.getUserBalance(msg.author.id);
-    const embed = vendingMachineEmbed(cats[0], prods, bal);
+    const embed = vendingMachineEmbed(cats[0], prods, bal, botAvatar(msg));
     const rows = vendingMachineRows(cats, prods);
     if (!channel || !('send' in channel)) { send(msg, `${EMOJI.error} Invalid channel!`); return; }
     const sent = await (channel as any).send({ embeds: [embed], components: rows });
@@ -277,7 +282,7 @@ export function registerAll() {
       if (args[1] === 'list') {
         const prods = db.getAllProducts();
         const cats = db.getCategories();
-        send(msg, { embeds: [adminProductListEmbed(prods, cats)] });
+        send(msg, { embeds: [adminProductListEmbed(prods, cats, botAvatar(msg))] });
       } else if (args[1] === 'add') {
         if (args.length < 6) { send(msg, `Usage: \`$admin products add SLOTID NAME PRICE CATEGORY_ID [stock]\``); return; }
         const slot = args[2].toUpperCase();
@@ -328,7 +333,7 @@ export function registerAll() {
         const order = db.getOrder(args[2]);
         if (!order) { send(msg, `${EMOJI.error} Order not found!`); return; }
         const items = db.getOrderItems(args[2]);
-        send(msg, orderEmbed(order, items));
+        send(msg, orderEmbed(order, items, botAvatar(msg)));
       } else {
         send(msg, `Usage: \`$admin orders list|view\``);
       }
@@ -447,7 +452,7 @@ export function registerAll() {
     db.updateDeliveryMessage(pendingItem.id, code);
     msg.guild?.members.fetch(order.user_id).then(member => {
       const updatedItems = db.getOrderItems(orderId);
-      member.send({ embeds: [deliveryEmbed(updatedItems)] }).catch(() => {});
+      member.send({ embeds: [deliveryEmbed(updatedItems, botAvatar(msg))] }).catch(() => {});
     }).catch(() => {});
     send(msg, `${EMOJI.success} Code delivered to order \`${orderId.slice(0, 8)}\`!`);
   });
