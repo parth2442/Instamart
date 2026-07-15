@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InstaMart Panel</title>
+<title>Mega Bazar Panel</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f13; color: #e0e0e0; min-height: 100vh; }
@@ -11,6 +11,7 @@
 
   /* Login */
   #login { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; gap: 20px; }
+  #login .logo { width: 180px; margin-bottom: 10px; }
   #login h1 { font-size: 2rem; color: #D4AF37; letter-spacing: 2px; }
   #login input { padding: 14px 20px; border: 1px solid #333; border-radius: 8px; background: #1a1a24; color: #fff; font-size: 1rem; width: 300px; outline: none; transition: border .2s; }
   #login input:focus { border-color: #D4AF37; }
@@ -63,6 +64,38 @@
   .code-row .sold { color: #ff9800; }
   .code-row .avail { color: #4caf50; }
 
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #1a1a24; border: 1px solid #2a2a35; border-radius: 12px; width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #2a2a35; }
+  .modal-header h2 { font-size: 1.1rem; color: #D4AF37; }
+  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-body label { font-size: .85rem; color: #888; font-weight: 500; }
+  .modal-body input, .modal-body select, .modal-body textarea { padding: 10px 14px; border: 1px solid #333; border-radius: 6px; background: #0f0f13; color: #e0e0e0; font-size: .9rem; outline: none; transition: border .2s; font-family: inherit; }
+  .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus { border-color: #D4AF37; }
+  .modal-body select { cursor: pointer; }
+  .modal-body select option { background: #1a1a24; color: #e0e0e0; }
+  .modal-footer { display: flex; gap: 8px; padding: 16px 20px; border-top: 1px solid #2a2a35; }
+  .modal-footer button { padding: 10px; border: none; border-radius: 6px; font-size: .9rem; font-weight: 500; cursor: pointer; transition: opacity .2s; }
+  .modal-footer button:hover { opacity: .85; }
+
+  .tabs { display:flex; gap:4px; margin-bottom:20px; background:#1a1a24; border-radius:10px; padding:4px; border:1px solid #2a2a35; }
+  .tabs button { flex:1; padding:10px; border:none; border-radius:8px; background:transparent; color:#888; font-size:.9rem; font-weight:500; cursor:pointer; transition:.2s; }
+  .tabs button.active { background:#D4AF37; color:#000; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  .payment-row { display:flex; align-items:center; gap:12px; padding:12px; background:#1a1a24; border:1px solid #2a2a35; border-radius:10px; margin-bottom:8px; }
+  .payment-row .info { flex:1; }
+  .payment-row .info .line1 { font-size:.9rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .payment-row .info .line2 { font-size:.8rem; color:#888; margin-top:2px; }
+  .payment-row .badge { font-size:.75rem; padding:2px 8px; border-radius:4px; font-weight:600; }
+  .badge.pending { background:#332b00; color:#D4AF37; }
+  .badge.paid { background:#1b3d1b; color:#4caf50; }
+  .badge.verified { background:#1b2d3d; color:#58a6ff; }
+  .badge.failed { background:#3d1b1b; color:#ff4444; }
+
   .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); z-index: 99; }
   .overlay.show { display: block; }
 </style>
@@ -71,7 +104,7 @@
 <div class="container">
   <!-- Login -->
   <div id="login">
-    <h1>🛒 INSTAMART</h1>
+    <div style="width:180px;height:60px;background:#D4AF37;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:1.8rem;font-weight:900;color:#000;letter-spacing:2px">MB</div>
     <p style="color:#666;font-size:.9rem;">Admin Panel</p>
     <div style="position:relative;width:300px">
       <input type="password" id="password" placeholder="Enter password" style="width:100%;padding-right:44px" onkeydown="if(event.key==='Enter') login()">
@@ -84,13 +117,171 @@
   <!-- Dashboard -->
   <div id="dashboard">
     <div class="header">
-      <div>
-        <h1>📦 Products</h1>
-        <p class="status" id="status"></p>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;background:#D4AF37;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:#000">MB</div>
+        <div>
+          <h1>Mega Bazar Admin</h1>
+          <p class="status" id="status">Loading...</p>
+        </div>
       </div>
-      <button class="logout" onclick="logout()">Logout</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="logout" style="background:#D4AF37;color:#000;border:none;font-weight:600" onclick="showCategories()">📁 Categories</button>
+        <button class="logout" style="background:#D4AF37;color:#000;border:none;font-weight:600" id="addBtn" onclick="showAddModal()">+ Product</button>
+        <button class="logout" onclick="logout()">Logout</button>
+      </div>
     </div>
-    <div class="products-grid" id="productsGrid"></div>
+
+    <div class="tabs">
+      <button class="active" data-tab="products" onclick="switchTab('products')">📦 Products</button>
+      <button data-tab="bulk" onclick="switchTab('bulk')">📥 Bulk Stock</button>
+      <button data-tab="payments" onclick="switchTab('payments')">💳 Payments</button>
+    </div>
+
+    <div class="tab-content active" id="tab-products">
+      <div class="products-grid" id="productsGrid"></div>
+    </div>
+
+    <div class="tab-content" id="tab-bulk">
+      <div style="background:#1a1a24;border:1px solid #2a2a35;border-radius:12px;padding:20px">
+        <h3 style="margin-bottom:12px;color:#D4AF37">📥 Bulk Stock Upload</h3>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <label style="color:#888;font-size:.85rem">Product:</label>
+          <select id="bulkProduct" style="padding:10px 14px;border:1px solid #333;border-radius:6px;background:#0f0f13;color:#e0e0e0;font-size:.9rem;outline:none;flex:1;min-width:200px"></select>
+          <label style="color:#888;font-size:.85rem">Mode:</label>
+          <select id="bulkMode" style="padding:10px 14px;border:1px solid #333;border-radius:6px;background:#0f0f13;color:#e0e0e0;font-size:.9rem;outline:none">
+            <option value="lines">1 code per line</option>
+            <option value="single">Entire text = 1 code</option>
+          </select>
+        </div>
+        <textarea id="bulkInput" placeholder="Har line ek code count hoga (chahe kitni bhi lambi ho)"
+          style="width:100%;min-height:300px;padding:14px;border:1px solid #333;border-radius:8px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;font-family:'Courier New',monospace;resize:vertical;outline:none;white-space:pre;overflow-x:auto"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn-add" onclick="bulkUpload()" style="padding:12px 30px;border:none;border-radius:8px;background:#D4AF37;color:#000;font-weight:600;cursor:pointer">📥 Upload Codes</button>
+          <button class="btn-view" onclick="document.getElementById('bulkInput').value=''" style="padding:12px 20px;border:none;border-radius:8px;background:#2a2a35;color:#e0e0e0;cursor:pointer">Clear</button>
+        </div>
+        <div id="bulkResult" style="margin-top:12px;font-size:.85rem;padding:8px 12px;border-radius:6px;display:none"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-payments">
+      <div id="paymentsList">
+        <p style="color:#666;text-align:center;padding:40px">Loading payments...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal-overlay" id="addModal" style="display:none" onclick="closeAddModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>+ Add Product</h2>
+      <button class="close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <label>Product Name</label>
+      <input type="text" id="addName" placeholder="e.g. Netflix Premium">
+
+      <label>Slot ID</label>
+      <input type="text" id="addSlot" placeholder="e.g. netflix_prem">
+
+      <label>Price (₹) — UPI</label>
+      <input type="number" id="addPrice" placeholder="e.g. 199">
+
+      <label>Price (USD) — LTC (optional)</label>
+      <input type="number" id="addPriceUSD" placeholder="e.g. 0.30">
+
+      <label>Stock (-1 for unlimited)</label>
+      <input type="number" id="addStock" placeholder="-1" value="-1">
+
+      <label>Category</label>
+      <div style="display:flex;gap:6px">
+        <select id="addCategory" style="flex:1"></select>
+        <button class="btn-view" style="padding:6px 12px;border:none;border-radius:6px;cursor:pointer;background:#2a2a35;color:#e0e0e0;font-size:.8rem" onclick="showAddCategory()" title="Add Category">+</button>
+      </div>
+      <div id="addCatSection" style="display:none;border:1px solid #2a2a35;border-radius:6px;padding:12px;margin-top:4px">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" id="newCatName" placeholder="Category name" style="flex:1;padding:8px 10px;border:1px solid #333;border-radius:4px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;outline:none">
+          <input type="text" id="newCatEmoji" placeholder="Emoji" style="width:50px;padding:8px 10px;border:1px solid #333;border-radius:4px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;text-align:center;outline:none" value="🏪">
+        </div>
+        <input type="text" id="newCatDesc" placeholder="Description (optional)" style="width:100%;padding:8px 10px;border:1px solid #333;border-radius:4px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;outline:none;margin-bottom:6px">
+        <div style="display:flex;gap:6px">
+          <button class="btn-view" onclick="hideAddCategory()" style="flex:1;padding:8px;border:none;border-radius:6px;cursor:pointer;background:#2a2a35;color:#e0e0e0;font-size:.85rem">Cancel</button>
+          <button class="btn-add" onclick="createCategory()" style="flex:2;padding:8px;border:none;border-radius:6px;cursor:pointer;background:#D4AF37;color:#000;font-weight:600;font-size:.85rem">Create</button>
+        </div>
+        <div id="catResult" style="margin-top:6px;font-size:.85rem;padding:4px 8px;border-radius:4px;display:none"></div>
+      </div>
+
+      <label>Description (optional)</label>
+      <textarea id="addDesc" placeholder="Product description..." rows="3"></textarea>
+
+      <div class="result" id="addResult"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-view" onclick="closeAddModal()" style="flex:1">Cancel</button>
+      <button class="btn-add" onclick="addProduct()" style="flex:2">Create Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- Categories Modal -->
+<div class="modal-overlay" id="catsModal" style="display:none" onclick="closeCatsModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>📁 Categories</h2>
+      <button class="close" onclick="closeCatsModal()">✕</button>
+    </div>
+    <div class="modal-body" id="catsModalBody">
+      <div id="catsList"></div>
+      <div style="margin-top:16px;border-top:1px solid #2a2a35;padding-top:16px">
+        <label>Add Category</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" id="catNewName" placeholder="Category name" style="flex:1;padding:10px;border:1px solid #333;border-radius:6px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;outline:none">
+          <input type="text" id="catNewEmoji" placeholder="Emoji" style="width:60px;padding:10px;border:1px solid #333;border-radius:6px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;text-align:center;outline:none" value="🏪">
+        </div>
+        <input type="text" id="catNewDesc" placeholder="Description (optional)" style="width:100%;padding:10px;border:1px solid #333;border-radius:6px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;outline:none;margin-bottom:8px">
+        <button class="btn-add" onclick="addCategory()" style="width:100%;padding:10px;border:none;border-radius:6px;background:#D4AF37;color:#000;font-weight:600;cursor:pointer">Create</button>
+        <div id="catActionResult" style="margin-top:6px;font-size:.85rem;padding:4px 8px;border-radius:4px;display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal-overlay" id="editModal" style="display:none" onclick="closeEditModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>✏️ Edit Product</h2>
+      <button class="close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body" id="editModalBody">
+      <label>Product Name</label>
+      <input type="text" id="editName">
+
+      <label>Slot ID</label>
+      <input type="text" id="editSlot">
+
+      <label>Price (₹) — UPI</label>
+      <input type="number" id="editPrice">
+
+      <label>Price (USD) — LTC (optional)</label>
+      <input type="number" id="editPriceUSD">
+
+      <label>Stock (-1 for unlimited)</label>
+      <input type="number" id="editStock">
+
+      <label>Category</label>
+      <select id="editCategory"></select>
+
+      <label>Description (optional)</label>
+      <textarea id="editDesc" rows="3"></textarea>
+
+      <div class="result" id="editResult"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-view" onclick="closeEditModal()" style="flex:1">Cancel</button>
+      <button class="btn-add" onclick="saveEditProduct()" style="flex:2">Save Changes</button>
+    </div>
   </div>
 </div>
 
@@ -110,6 +301,12 @@
 let token = localStorage.getItem('token');
 if (token) showDashboard();
 
+// Delegated verify button handler (set once)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.verify-btn');
+  if (btn) verifyPayment(btn.dataset.orderId, btn);
+});
+
 function togglePassword() {
   const inp = document.getElementById('password');
   const btn = document.getElementById('togglePass');
@@ -123,6 +320,7 @@ async function login() {
   const data = await res.json();
   if (res.ok) {
     localStorage.setItem('token', data.token);
+    token = data.token;
     showDashboard();
   } else {
     document.getElementById('loginError').textContent = 'Wrong password!';
@@ -139,83 +337,616 @@ async function showDashboard() {
   document.getElementById('login').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   await loadProducts();
+  loadPayments();
+}
+
+async function switchTab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if (name === 'payments') loadPayments();
+  if (name === 'bulk') {
+    try {
+      const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+      const products = await res.json();
+      const sel = document.getElementById('bulkProduct');
+      sel.innerHTML = '';
+      for (const p of products) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.category_emoji || ''} ${p.name || ''} (${p.slot_id || ''})`;
+        sel.appendChild(opt);
+      }
+    } catch { console.error('bulk load failed'); }
+  }
+}
+
+async function loadPayments() {
+  try {
+    const res = await fetch('/api/payments', { headers: { 'Authorization': `Bearer ${token}` } });
+    const payments = await res.json();
+    const list = document.getElementById('paymentsList');
+    if (payments.length === 0) {
+      list.innerHTML = '<p style="color:#666;text-align:center;padding:40px">No payments yet.</p>';
+      return;
+    }
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    list.innerHTML = payments.map(p => {
+      const badgeClass = p.status;
+      const methodIcon = p.method === 'upi' ? '\u{1F4B1}' : '\u{1F3E6}';
+      const date = new Date(p.createdAt).toLocaleString();
+      return `<div class="payment-row">
+        <div class="info">
+          <div class="line1">
+            <span class="badge ${badgeClass}">${esc(p.status)}</span>
+            ${methodIcon} <strong>\u{20B9}${p.amount}</strong>
+            <span style="color:#888">Order: <code>${esc(p.orderId)}</code></span>
+            <span style="color:#888"><@${p.userId ? p.userId.slice(0, 8) : '???'}...></span>
+          </div>
+          <div class="line2">
+            ${date} ${p.utr ? '| UTR: <code>' + esc(p.utr) + '</code>' : ''} ${p.txHash ? '| TX: <code>' + esc(p.txHash) + '...</code>' : ''}
+          </div>
+        </div>
+        ${p.status === 'paid' && p.method === 'upi' ? `<button class="btn-add verify-btn" data-order-id="${esc(p.orderId)}" style="padding:8px 16px;border:none;border-radius:6px;background:#D4AF37;color:#000;font-weight:600;cursor:pointer;font-size:.8rem">Verify</button>` : ''}
+        ${p.status === 'pending' ? '<span style="color:#888;font-size:.8rem">Awaiting payment</span>' : ''}
+        ${p.status === 'paid' && p.method === 'ltc' ? '<span style="color:#888;font-size:.8rem">Awaiting manual verify</span>' : ''}
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('paymentsList').innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Failed to load payments.</p>';
+  }
+}
+
+async function verifyPayment(orderId, btn) {
+  if (!confirm('Verify payment for ' + orderId + '? Items will be delivered.')) return;
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+  try {
+    const res = await fetch('/api/payments/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ orderId }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.textContent = '✅ Done';
+      btn.style.background = '#2ea043';
+      setTimeout(() => loadPayments(), 1500);
+    } else {
+      btn.textContent = '❌ Failed';
+      alert(data.error);
+    }
+  } catch {
+    btn.textContent = 'Error';
+    btn.disabled = false;
+  }
 }
 
 async function loadProducts() {
-  const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
-  const products = await res.json();
-  document.getElementById('status').textContent = `${products.length} products`;
+  try {
+    const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Failed');
+    const products = await res.json();
+    document.getElementById('status').textContent = `${products.length} products`;
 
-  const grid = document.getElementById('productsGrid');
-  grid.innerHTML = products.map(p => `
-    <div class="product-card">
-      <div class="top">
-        <span class="name">${p.category_emoji} ${p.name}</span>
-        <span class="slot">${p.slot_id}</span>
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const safeName = p => esc(p.name);
+
+    const grid = document.getElementById('productsGrid');
+    grid.innerHTML = products.map(p => `
+      <div class="product-card">
+        <div class="top">
+          <span class="name">${esc(p.category_emoji)} ${esc(p.name)}</span>
+          <span class="slot">${esc(p.slot_id)}</span>
+        </div>
+        <div class="meta">
+          <span>💰 ₹${p.price}</span>
+          <span>📦 ${p.stock === -1 ? '∞' : p.stock}</span>
+          <span class="available">✅ ${p.available_codes} avail</span>
+          <span class="sold">📤 ${p.sold_codes} sold</span>
+        </div>
+        <textarea id="codes-${p.id}" placeholder="Paste codes here, one per line..."></textarea>
+        <textarea id="howto-${p.id}" placeholder="How to claim / Instructions (sent to customer via DM)" style="width:100%;padding:10px;border:1px solid #333;border-radius:6px;background:#0f0f13;color:#e0e0e0;font-size:.85rem;resize:vertical;min-height:40px;outline:none;margin-top:6px"></textarea>
+        <div class="actions">
+          <button class="btn-add" onclick="addCodes(${p.id})">+ Add Codes</button>
+          <button class="btn-view" style="background:#4a6fa5;color:#fff" onclick="addSingleCode(${p.id})">📄 Add as 1 Code</button>
+          <button class="btn-view" onclick="editProduct(${p.id})">✏️ Edit</button>
+          <button class="btn-view" onclick="saveHowTo(${p.id})">💾 Save Process</button>
+          <button class="btn-view" onclick="viewCodes(${p.id})">📋 View</button>
+          <button class="btn-view" style="border:1px solid #ff4444;color:#ff4444" onclick="deleteProduct(${p.id})">🗑️ Delete</button>
+        </div>
+        <div class="result" id="result-${p.id}"></div>
       </div>
-      <div class="meta">
-        <span>💰 ₹${p.price}</span>
-        <span>📦 ${p.stock === -1 ? '∞' : p.stock}</span>
-        <span class="available">✅ ${p.available_codes} avail</span>
-        <span class="sold">📤 ${p.sold_codes} sold</span>
-      </div>
-      <textarea id="codes-${p.id}" placeholder="Paste codes here, one per line..."></textarea>
-      <div class="actions">
-        <button class="btn-add" onclick="addCodes(${p.id})">+ Add Codes</button>
-        <button class="btn-view" onclick="viewCodes(${p.id}, '${p.name}')">📋 View</button>
-      </div>
-      <div class="result" id="result-${p.id}"></div>
-    </div>
-  `).join('');
+    `).join('');
+
+    // Set how_to_use via DOM to avoid HTML injection
+    products.forEach(p => {
+      const ta = document.getElementById('howto-' + p.id);
+      if (ta) ta.value = p.how_to_use || '';
+    });
+  } catch {
+    document.getElementById('status').textContent = 'Failed to load products';
+  }
+}
+
+async function bulkUpload() {
+  try {
+    const raw = document.getElementById('bulkInput').value.trim();
+    const productId = parseInt(document.getElementById('bulkProduct').value);
+    const mode = document.getElementById('bulkMode').value;
+    if (!raw || !productId) return;
+    const el = document.getElementById('bulkResult');
+    el.style.display = 'none';
+
+    let codes;
+    if (mode === 'single') {
+      codes = [raw];
+    } else {
+      codes = raw.split('\n').map(s => s.trim()).filter(Boolean);
+    }
+
+    const res = await fetch(`/api/products/${productId}/stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ codes }),
+    });
+    const data = await res.json();
+    el.className = 'result';
+    el.style.display = 'block';
+    if (res.ok) {
+      el.style.background = '#1b3d1b'; el.style.color = '#4caf50';
+      el.textContent = `✅ ${data.added} codes added to product (${data.available} avail, ${data.sold} sold)`;
+      document.getElementById('bulkInput').value = '';
+      loadProducts();
+    } else {
+      el.style.background = '#3d1b1b'; el.style.color = '#ff4444';
+      el.textContent = `❌ ${data.error}`;
+    }
+  } catch {
+    const el = document.getElementById('bulkResult');
+    el.className = 'result error'; el.style.display = 'block';
+    el.textContent = '❌ Server error';
+  }
 }
 
 async function addCodes(productId) {
-  const ta = document.getElementById(`codes-${productId}`);
-  const raw = ta.value.trim();
-  if (!raw) return;
+  try {
+    const ta = document.getElementById(`codes-${productId}`);
+    const raw = ta.value.trim();
+    if (!raw) return;
 
-  const codes = raw.split('\n').map(s => s.trim()).filter(Boolean);
-  const res = await fetch(`/api/products/${productId}/stock`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ codes }),
-  });
-  const data = await res.json();
-  const el = document.getElementById(`result-${productId}`);
-  if (res.ok) {
-    el.className = 'result success';
-    el.textContent = `✅ ${data.added} codes added (${data.available} avail, ${data.sold} sold)`;
-    el.style.display = 'block';
-    ta.value = '';
-    loadProducts();
-  } else {
-    el.className = 'result error';
-    el.textContent = `❌ ${data.error}`;
-    el.style.display = 'block';
+    const codes = raw.split('\n').map(s => s.trim()).filter(Boolean);
+    const res = await fetch(`/api/products/${productId}/stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ codes }),
+    });
+    const data = await res.json();
+    const el = document.getElementById(`result-${productId}`);
+    if (res.ok) {
+      el.className = 'result success';
+      el.textContent = `✅ ${data.added} codes added (${data.available} avail, ${data.sold} sold)`;
+      el.style.display = 'block';
+      ta.value = '';
+      loadProducts();
+    } else {
+      el.className = 'result error';
+      el.textContent = `❌ ${data.error}`;
+      el.style.display = 'block';
+    }
+    setTimeout(() => el.style.display = 'none', 4000);
+  } catch {
+    const el = document.getElementById(`result-${productId}`);
+    if (el) { el.className = 'result error'; el.textContent = '❌ Server error'; el.style.display = 'block'; }
   }
-  setTimeout(() => el.style.display = 'none', 4000);
 }
 
-async function viewCodes(productId, name) {
+async function addSingleCode(productId) {
+  try {
+    const ta = document.getElementById(`codes-${productId}`);
+    const raw = ta.value.trim();
+    if (!raw) return;
+
+    const res = await fetch(`/api/products/${productId}/stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ codes: [raw] }),
+    });
+    const data = await res.json();
+    const el = document.getElementById(`result-${productId}`);
+    if (res.ok) {
+      el.className = 'result success';
+      el.textContent = `✅ 1 code added (${data.available} avail, ${data.sold} sold)`;
+      el.style.display = 'block';
+      ta.value = '';
+      loadProducts();
+    } else {
+      el.className = 'result error';
+      el.textContent = `❌ ${data.error}`;
+      el.style.display = 'block';
+    }
+    setTimeout(() => el.style.display = 'none', 4000);
+  } catch {
+    const el = document.getElementById(`result-${productId}`);
+    if (el) { el.className = 'result error'; el.textContent = '❌ Server error'; el.style.display = 'block'; }
+  }
+}
+
+async function saveHowTo(productId) {
+  const how_to_use = document.getElementById(`howto-${productId}`).value.trim();
+  try {
+    const res = await fetch(`/api/products/${productId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ how_to_use }),
+    });
+    const el = document.getElementById(`result-${productId}`);
+    if (res.ok) {
+      el.className = 'result success'; el.style.display = 'block';
+      el.textContent = '✅ Process saved!';
+    } else {
+      el.className = 'result error'; el.style.display = 'block';
+      el.textContent = '❌ Save failed';
+    }
+    setTimeout(() => el.style.display = 'none', 3000);
+  } catch {
+    const el = document.getElementById(`result-${productId}`);
+    el.className = 'result error'; el.style.display = 'block';
+    el.textContent = '❌ Server error';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
+}
+
+async function deleteCode(codeId, codeText) {
+  if (!confirm(`Delete code "${codeText}"?`)) return;
+  try {
+    const res = await fetch(`/api/inventory/${codeId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (res.ok) {
+      loadProducts();
+      const pid = document.getElementById('panelTitle')?.dataset?.productId;
+      if (pid) refreshCodesList(parseInt(pid));
+    } else {
+      alert('Failed to delete code');
+    }
+  } catch { alert('Server error'); }
+}
+
+async function deleteProduct(productId) {
+  try {
+    const prodRes = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+    const allProds = await prodRes.json();
+    const p = allProds.find(x => x.id === productId);
+    const name = p ? p.name : 'this product';
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const res = await fetch(`/api/products/${productId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (res.ok) {
+      loadProducts();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete');
+    }
+  } catch {
+    alert('Server error');
+  }
+}
+
+async function viewCodes(productId) {
   document.getElementById('overlay').classList.add('show');
   document.getElementById('codesPanel').classList.add('open');
-  document.getElementById('panelTitle').textContent = `📋 ${name} Codes`;
+  const title = document.getElementById('panelTitle');
+  title.textContent = '📋 Codes';
+  title.dataset.productId = productId;
 
+  // Get product name
+  try {
+    const prodRes = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+    const allProds = await prodRes.json();
+    const prod = allProds.find(x => x.id === productId);
+    if (prod) title.textContent = `📋 ${prod.name} Codes`;
+  } catch {}
+
+  await refreshCodesList(productId);
+}
+
+async function refreshCodesList(productId) {
   const res = await fetch(`/api/products/${productId}/inventory`, { headers: { 'Authorization': `Bearer ${token}` } });
   const data = await res.json();
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const list = document.getElementById('codesList');
   list.innerHTML = data.codes.length === 0 ? '<p style="color:#666">No codes yet.</p>' :
     data.codes.map(c => `
       <div class="code-row">
-        <span>${c.code}</span>
-        <span class="${c.is_sold ? 'sold' : 'avail'}">${c.is_sold ? 'Sold' : 'Available'}</span>
+        <span>${esc(c.code)}</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          <span class="${c.is_sold ? 'sold' : 'avail'}">${c.is_sold ? 'Sold' : 'Available'}</span>
+          <button class="del-code-btn" data-id="${c.id}" data-code="${esc(c.code)}" style="background:none;border:none;color:#ff4444;cursor:pointer;font-size:.8rem;padding:0 4px">✕</button>
+        </span>
       </div>
     `).join('');
+  if (!list._delListen) {
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('.del-code-btn');
+      if (!btn) return;
+      deleteCode(parseInt(btn.dataset.id), btn.dataset.code);
+    });
+    list._delListen = true;
+  }
+  // Add clear button if there are unsold codes
+  const unsold = data.codes.filter(c => !c.is_sold).length;
+  if (unsold > 0) {
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = '🗑️ Clear Available Stock (' + unsold + ')';
+    clearBtn.style.cssText = 'width:100%;padding:10px;border:1px solid #ff4444;border-radius:6px;background:transparent;color:#ff4444;font-size:.85rem;cursor:pointer;margin-top:12px';
+    clearBtn.onclick = async () => {
+      if (!confirm('Delete ' + unsold + ' available codes?')) return;
+      await fetch('/api/products/' + productId + '/stock', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+      refreshCodesList(productId);
+      loadProducts();
+    };
+    list.appendChild(clearBtn);
+  }
 }
 
 function closeCodes() {
   document.getElementById('overlay').classList.remove('show');
   document.getElementById('codesPanel').classList.remove('open');
+}
+
+function showAddCategory() {
+  document.getElementById('addCatSection').style.display = 'block';
+  document.getElementById('newCatName').value = '';
+  document.getElementById('newCatDesc').value = '';
+  document.getElementById('newCatEmoji').value = '\u{1F3EA}';
+  document.getElementById('catResult').style.display = 'none';
+}
+
+function hideAddCategory() {
+  document.getElementById('addCatSection').style.display = 'none';
+}
+
+async function createCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  const emoji = document.getElementById('newCatEmoji').value.trim() || '\u{1F3EA}';
+  const description = document.getElementById('newCatDesc').value.trim();
+  if (!name) {
+    const el = document.getElementById('catResult');
+    el.className = 'result error'; el.style.display = 'block'; el.textContent = 'Name is required';
+    return;
+  }
+  const res = await fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ name, description, emoji }),
+  });
+  const data = await res.json();
+  const el = document.getElementById('catResult');
+  if (res.ok) {
+    el.className = 'result success'; el.style.display = 'block'; el.textContent = `✅ ${name} created!`;
+    hideAddCategory();
+    const sel = document.getElementById('addCategory');
+    const opt = document.createElement('option');
+    opt.value = data.id;
+    opt.textContent = `${emoji} ${name}`;
+    sel.appendChild(opt);
+    sel.value = data.id;
+  } else {
+    el.className = 'result error'; el.style.display = 'block'; el.textContent = `❌ ${data.error}`;
+  }
+}
+
+async function showAddModal() {
+  document.getElementById('addModal').style.display = 'flex';
+  document.getElementById('addResult').style.display = 'none';
+  document.getElementById('addName').value = '';
+  document.getElementById('addSlot').value = '';
+  document.getElementById('addPrice').value = '';
+  document.getElementById('addPriceUSD').value = '';
+  document.getElementById('addStock').value = '-1';
+  document.getElementById('addDesc').value = '';
+
+  try {
+    const res = await fetch('/api/categories', { headers: { 'Authorization': `Bearer ${token}` } });
+    const cats = await res.json();
+    const sel = document.getElementById('addCategory');
+    sel.innerHTML = '';
+    for (const c of cats) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.emoji || ''} ${c.name || ''}`;
+      sel.appendChild(opt);
+    }
+  } catch { console.error('showAddModal load categories failed'); }
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+async function addProduct() {
+  const name = document.getElementById('addName').value.trim();
+  const slot_id = document.getElementById('addSlot').value.trim();
+  const price = document.getElementById('addPrice').value;
+  const price_usd = document.getElementById('addPriceUSD').value;
+  const stock = document.getElementById('addStock').value;
+  const category_id = document.getElementById('addCategory').value;
+  const description = document.getElementById('addDesc').value.trim();
+
+  if (!name || !slot_id || !price) {
+    const el = document.getElementById('addResult');
+    el.className = 'result error'; el.style.display = 'block';
+    el.textContent = '❌ Name, Slot ID, and Price are required';
+    return;
+  }
+
+  const res = await fetch('/api/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ slot_id, name, price: Number(price), price_usd: price_usd ? Number(price_usd) : undefined, stock: stock ? Number(stock) : -1, category_id: Number(category_id), description }),
+  });
+  const data = await res.json();
+  const el = document.getElementById('addResult');
+  if (res.ok) {
+    el.className = 'result success'; el.style.display = 'block';
+    el.textContent = '✅ Product created!';
+    setTimeout(() => { closeAddModal(); loadProducts(); }, 1000);
+  } else {
+    el.className = 'result error'; el.style.display = 'block';
+    el.textContent = `❌ ${data.error}`;
+  }
+}
+
+// ─── Categories Management ───
+
+async function showCategories() {
+  document.getElementById('catsModal').style.display = 'flex';
+  await loadCatsList();
+}
+
+function closeCatsModal() {
+  document.getElementById('catsModal').style.display = 'none';
+}
+
+async function loadCatsList() {
+  try {
+    const res = await fetch('/api/categories', { headers: { 'Authorization': `Bearer ${token}` } });
+    const cats = await res.json();
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const list = document.getElementById('catsList');
+    list.innerHTML = cats.map(c => `
+      <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#1a1a24;border:1px solid #2a2a35;border-radius:8px;margin-bottom:6px">
+        <span style="font-size:1.2rem">${esc(c.emoji) || '🏪'}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:.9rem">${esc(c.name)}</div>
+        </div>
+        <button class="btn-view" style="padding:6px 12px;border:none;border-radius:6px;cursor:pointer;background:#2a2a35;color:#e0e0e0;font-size:.8rem" data-cat-id="${c.id}" data-cat-name="${esc(c.name)}" data-cat-emoji="${esc(c.emoji) || '🏪'}" onclick="editCat(this)">✏️</button>
+      </div>
+    `).join('');
+  } catch { console.error('loadCatsList failed'); }
+}
+
+async function editCat(btn) {
+  const id = parseInt(btn.dataset.catId);
+  const name = btn.dataset.catName;
+  const emoji = btn.dataset.catEmoji;
+  const newName = prompt('Category name:', name);
+  if (!newName || newName === name) return;
+  const newEmoji = prompt('Emoji:', emoji);
+  const res = await fetch(`/api/categories/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ name: newName, emoji: newEmoji || emoji }),
+  });
+  if (res.ok) {
+    loadCatsList();
+    loadProducts();
+  }
+}
+
+async function addCategory() {
+  const name = document.getElementById('catNewName').value.trim();
+  const emoji = document.getElementById('catNewEmoji').value.trim() || '🏪';
+  const description = document.getElementById('catNewDesc').value.trim();
+  if (!name) {
+    const el = document.getElementById('catActionResult');
+    el.className = 'result error'; el.style.display = 'block'; el.textContent = 'Name required';
+    return;
+  }
+  const res = await fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ name, description, emoji }),
+  });
+  const data = await res.json();
+  const el = document.getElementById('catActionResult');
+  if (res.ok) {
+    el.className = 'result success'; el.style.display = 'block'; el.textContent = '✅ Created!';
+    document.getElementById('catNewName').value = '';
+    document.getElementById('catNewEmoji').value = '🏪';
+    document.getElementById('catNewDesc').value = '';
+    loadCatsList();
+  } else {
+    el.className = 'result error'; el.style.display = 'block'; el.textContent = '❌ ' + (data.error || 'Error');
+  }
+}
+
+// ─── Edit Product ───
+
+let editingProductId = null;
+
+async function editProduct(productId) {
+  try {
+    const res = await fetch(`/api/products`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const products = await res.json();
+    const p = products.find(x => x.id === productId);
+    if (!p) return alert('Product not found');
+
+    editingProductId = productId;
+    document.getElementById('editName').value = p.name || '';
+    document.getElementById('editSlot').value = p.slot_id || '';
+    document.getElementById('editPrice').value = p.price || '';
+    document.getElementById('editPriceUSD').value = p.price_usd || '';
+    document.getElementById('editStock').value = p.stock ?? -1;
+    document.getElementById('editDesc').value = p.description || '';
+
+    const catRes = await fetch('/api/categories', { headers: { 'Authorization': `Bearer ${token}` } });
+    const cats = await catRes.json();
+    const sel = document.getElementById('editCategory');
+    sel.innerHTML = '';
+    for (const c of cats) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      if (c.id === p.category_id) opt.selected = true;
+      opt.textContent = `${c.emoji || ''} ${c.name || ''}`;
+      sel.appendChild(opt);
+    }
+
+    document.getElementById('editResult').style.display = 'none';
+    document.getElementById('editModal').style.display = 'flex';
+  } catch { console.error('editProduct failed'); }
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+async function saveEditProduct() {
+  const name = document.getElementById('editName').value.trim();
+  const slot_id = document.getElementById('editSlot').value.trim();
+  const price = document.getElementById('editPrice').value;
+  const price_usd = document.getElementById('editPriceUSD').value;
+  const stock = document.getElementById('editStock').value;
+  const category_id = document.getElementById('editCategory').value;
+  const description = document.getElementById('editDesc').value.trim();
+
+  if (!name || !slot_id || !price) {
+    const el = document.getElementById('editResult');
+    el.className = 'result error'; el.style.display = 'block';
+    el.textContent = '❌ Name, Slot ID, and Price are required';
+    return;
+  }
+
+  const res = await fetch(`/api/products/${editingProductId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ name, slot_id, price: Number(price), price_usd: price_usd ? Number(price_usd) : undefined, stock: stock ? Number(stock) : -1, category_id: Number(category_id), description }),
+  });
+  const data = await res.json();
+  const el = document.getElementById('editResult');
+  if (res.ok) {
+    el.className = 'result success'; el.style.display = 'block';
+    el.textContent = '✅ Product updated!';
+    setTimeout(() => { closeEditModal(); loadProducts(); }, 1000);
+  } else {
+    el.className = 'result error'; el.style.display = 'block';
+    el.textContent = `❌ ${data.error}`;
+  }
 }
 </script>
 </body>

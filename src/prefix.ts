@@ -1,5 +1,5 @@
-import { Message, TextBasedChannel } from 'discord.js';
-import { config } from './config.js';
+import { Message, EmbedBuilder } from 'discord.js';
+import { COLORS, config } from './config.js';
 
 type PrefixHandler = (msg: Message, args: string[]) => void | Promise<void>;
 
@@ -20,6 +20,21 @@ export function handlePrefix(msg: Message) {
   if (msg.author.bot) return;
   if (!msg.channel?.isTextBased()) return;
   const content = msg.content;
+
+  // Handle @mention ping
+  const botId = msg.client.user?.id;
+  if (botId && (content.startsWith(`<@${botId}>`) || content.startsWith(`<@!${botId}>`))) {
+    const ch = msg.channel as any;
+    if (ch?.send) {
+      const embed = new EmbedBuilder()
+        .setColor(COLORS.gold)
+        .setDescription(`\u{1F44B} Hey **${msg.author.username}**! Use \`$\`help for commands.`)
+        .setFooter({ text: 'Crafted by Parth.cd' });
+      ch.send({ embeds: [embed] }).catch(() => {});
+    }
+    return;
+  }
+
   if (!content.startsWith(config.prefix)) return;
 
   const parts = content.slice(config.prefix.length).split(/\s+/);

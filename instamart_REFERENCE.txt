@@ -1,0 +1,582 @@
+=================================================================
+ INSTAMART BOT UI — Complete Reference from RoundBot Codebase
+=================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1. COLOR SYSTEM (gold/white/black theme)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create file: instamart/style/color.py
+─────────────────────────────────────────────────────────────────
+
+import random
+import discord
+
+# ── Brand ──
+gold        = 0xFFD700    # Gold — primary accent for InstaMart
+white       = 0xFFFFFF    # White — headings, bright text
+
+# ── Semantic ──
+success     = 0x57f287    # Soft green — confirmations
+error       = 0xed4245    # Muted red — errors, danger
+warning     = 0xfee75c    # Yellow — caution, pending
+
+# ── Neutral ──
+black       = 0x000000    # Pure black — container backgrounds
+dark        = 0x1a1a1a    # Near-black — secondary containers
+embed_black = 0x23272a    # Same as RoundBot (matches Discord dark)
+gray        = 0x808080    # Muted secondary text
+gray_muted  = 0x99aab5    # Muted text (RoundBot original)
+
+
+IMPORT FROM COLOR:
+    from instamart.style import color
+    # Usage: color.gold, color.black, color.white, color.gray
+
+NOTE: These are just integers. Use as:
+    accent_color=color.gold       # for Container borders
+    or accent_color=color.black   # for Container backgrounds
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 2. EMOJI SYSTEM (RoundBot Style)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create file: instamart/style/emoji.py
+─────────────────────────────────────────────────────────────────
+
+# ── Status ──
+SUCCESS = "<:success:1505318677350715423>"    # green checkmark
+ERROR   = "<:error:1505318845592899754>"      # red X
+WARNING = "<:Warning:1505318801661628587>"    # yellow warning
+LOADING = "<a:RoundLoading:1505318638507266221>"
+
+# ── Navigation ──
+BACK     = "<:Back:1505318820657758349>"
+PREVIOUS = "<:previous:1505318970180501555>"
+NEXT     = "<:next:1505318606320435310>"
+HOME     = "<:RoundHome:1505318612695515137>"
+
+# ── E-commerce ──
+CART    = "🛒"
+ORDER   = "📦"
+TICKET  = "🎫"
+COIN    = "💰"
+STAR    = "⭐"
+CROWN   = "👑"
+GIFT    = "🎁"
+
+# ── Actions ──
+YES     = "✅"
+NO      = "❌"
+CLOSE   = "🔒"
+EDIT    = "✏️"
+DELETE  = "🗑️"
+SEARCH  = "🔍"
+
+# ── Formatting ──
+DIVIDER = "━━━━━━━━━━━━━━━━━━━━"
+BULLET  = "▸"
+DOT     = "•"
+ARROW_R = "›"
+
+# ── Category Emojis ──
+SHOP    = "🛍️"
+PROFILE = "👤"
+HELP    = "❓"
+PREMIUM = "💎"
+SUPPORT = "<:Support:1505318499441049630>"
+
+# ── Order Status ──
+PROCESSING = "🟡"
+DELIVERED  = "✅"
+CANCELED   = "❌"
+PENDING    = "⏳"
+
+
+IMPORT FROM EMOJI:
+    from instamart.style import emoji as e
+    # Usage: e.CART, e.SUCCESS, e.DIVIDER, etc.
+
+OR (if bot attaches emoji to self):
+    self.bot.emoji.CART, self.bot.emoji.SUCCESS
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 3. UI ARCHITECTURE — Container/View Pattern
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REQUIRED IMPORTS (every UI file):
+─────────────────────────────────────────────────────────────────
+
+    import discord
+    from discord.ext import commands
+    from discord import ui
+    from instamart.style import color
+    from instamart.style import emoji as e
+
+
+LAYOUT HIERARCHY (exactly like help.py):
+─────────────────────────────────────────────────────────────────
+
+    LayoutView (timeout=120 or None for persistent)
+    │
+    ├── Container (accent_color=color.black)          # ← main wrapper
+    │     ├── Section                                  # ← title + thumbnail combo
+    │     │     ├── TextDisplay(f"### Heading")
+    │     │     ├── TextDisplay("description...")
+    │     │     └── accessory=Thumbnail(
+    │     │             media=discord.UnfurledMediaItem(url=...),
+    │     │             description="alt text"
+    │     │         )
+    │     ├── Separator(spacing=discord.SeparatorSpacing.large)
+    │     ├── TextDisplay("content with **markdown**")
+    │     ├── Separator(...)
+    │     ├── ActionRow                                  # ← button row
+    │     │     ├── Button(label, style, emoji, url/custom_id)
+    │     │     └── Button(...)
+    │     └── TextDisplay("-# Footer text")
+    │
+    ├── ActionRow                                       # ← dropdown row
+    │     └── Select(placeholder, options=[...])
+    │
+    └── ActionRow                                       # ← bottom buttons row
+          ├── Button(...)
+          └── Button(...)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 4. EXACT CODE TEMPLATES (Copy-Paste Ready)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+[4A] SIMPLE VIEW (for quick replies — like mention.py)
+──────────────────────────────────────────────────────
+
+    section = ui.Section(
+        ui.TextDisplay(
+            f"## **Hey! I am {bot_name}**\n"
+            f"> Start using me with `/shop`"
+        ),
+        accessory=ui.Thumbnail(
+            media=discord.UnfurledMediaItem(url=bot.user.display_avatar.url),
+            description="Bot Avatar"
+        ),
+        id=1
+    )
+
+    container = ui.Container(
+        section,
+        ui.Separator(),
+        ui.TextDisplay("-# Crafted by Parth.cd"),
+        accent_color=color.black
+    )
+
+    view = ui.LayoutView(timeout=None)
+    view.add_item(container)
+    await ctx.send(view=view)
+
+
+[4B] HELP MENU (Home page — exact RoundBot pattern)
+─────────────────────────────────────────────────────
+
+    # In your view class __init__:
+    prefix = self.bot.cache.guilds.get(str(self.ctx.guild.id), {}).get("prefix", "!")
+    bot_name = self.bot.user.display_name
+
+    container = ui.Container(accent_color=color.black)
+
+    section = ui.Section(
+        ui.TextDisplay(f"### 👑 Welcome to {bot_name}"),
+        ui.TextDisplay(
+            f"{e.DOT} My prefix is `{prefix}`\n"
+            f"{e.DOT} Type `{prefix}help` for commands\n"
+            f"{e.DOT} Premium ordering assistant"
+        ),
+        accessory=ui.Thumbnail(
+            media=discord.UnfurledMediaItem(url=self.bot.user.display_avatar.url),
+            description="Bot Avatar",
+        ),
+    )
+    container.add_item(section)
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    # Module list
+    lines = []
+    for item in modules:
+        lines.append(f"{e.SHOP} {e.ARROW_R} **{item['name']}**")
+    container.add_item(ui.TextDisplay("\n".join(lines)))
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    # URL Buttons
+    link_row = ui.ActionRow()
+    link_row.add_item(
+        ui.Button(label="Website", style=discord.ButtonStyle.link, url="https://...", emoji=e.SHOP)
+    )
+    link_row.add_item(
+        ui.Button(label="Support", style=discord.ButtonStyle.link, url="https://...", emoji=e.SUPPORT)
+    )
+    container.add_item(link_row)
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    container.add_item(ui.TextDisplay(f"-# Crafted by Parth.cd"))
+    self.add_item(container)
+
+    # Bottom buttons
+    btn_row = ui.ActionRow()
+    btn_row.add_item(ui.Button(label="Shop", style=discord.ButtonStyle.primary, emoji=e.CART))
+    btn_row.add_item(ui.Button(label="My Orders", style=discord.ButtonStyle.secondary, emoji=e.ORDER))
+    self.add_item(btn_row)
+
+
+[4C] PRODUCT LISTING (one Container per product)
+────────────────────────────────────────────────
+
+    container = ui.Container(accent_color=color.black)
+
+    section = ui.Section(
+        ui.TextDisplay(f"### 🛒 {product_name}"),
+        ui.TextDisplay(f"{product_description}\n\n__**₹{price}**__"),
+        accessory=ui.Thumbnail(
+            media=discord.UnfurledMediaItem(url=image_url),
+            description=product_name,
+        ),
+    )
+    container.add_item(section)
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    btn_row = ui.ActionRow()
+    btn_row.add_item(
+        ui.Button(label="Buy Now", style=discord.ButtonStyle.primary, emoji=e.CART,
+                  custom_id=f"buy_{product_id}")
+    )
+    btn_row.add_item(
+        ui.Button(label="Details", style=discord.ButtonStyle.secondary, emoji=e.INFO,
+                  custom_id=f"detail_{product_id}")
+    )
+    container.add_item(btn_row)
+
+    view.add_item(container)
+
+
+[4D] CART VIEW
+────────────────
+
+    container = ui.Container(accent_color=color.black)
+
+    container.add_item(ui.TextDisplay(f"**YOUR CART**"))
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    for item in cart_items:
+        container.add_item(
+            ui.TextDisplay(f"{item['qty']}x {item['name']} — ₹{item['price']}")
+        )
+
+    container.add_item(ui.TextDisplay(e.DIVIDER))
+    container.add_item(ui.TextDisplay(f"**Total: ₹{total}**"))
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    btn_row = ui.ActionRow()
+    btn_row.add_item(
+        ui.Button(label="✅ Confirm Order", style=discord.ButtonStyle.primary,
+                  custom_id="confirm_order")
+    )
+    btn_row.add_item(
+        ui.Button(label="❌ Clear", style=discord.ButtonStyle.danger,
+                  custom_id="clear_cart")
+    )
+    container.add_item(btn_row)
+
+    view.add_item(container)
+
+
+[4E] ORDER STATUS
+─────────────────
+
+    container = ui.Container(accent_color=color.black)
+    container.add_item(ui.TextDisplay(f"**ORDERS**"))
+    container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+
+    for order in orders:
+        status_emoji = {
+            "processing": e.PROCESSING,
+            "delivered": e.DELIVERED,
+            "canceled": e.CANCELED,
+            "pending": e.PENDING,
+        }.get(order["status"], e.PENDING)
+        container.add_item(
+            ui.TextDisplay(
+                f"#{order['id']} — {order['item']} — ₹{order['amount']}\n"
+                f"  {status_emoji} {order['status'].title()}"
+            )
+        )
+
+    view.add_item(container)
+
+
+[4F] ERROR / SUCCESS REPLY PATTERN
+────────────────────────────────────
+
+    # Using simple Container (no Section needed for quick replies)
+    container = ui.Container(accent_color=color.black)
+    container.add_item(
+        ui.TextDisplay(f"{e.ERROR} **Error**\n{error_message}")
+    )
+    container.add_item(ui.TextDisplay(f"-# Crafted by Parth.cd"))
+    view = ui.LayoutView(timeout=30)
+    view.add_item(container)
+    await ctx.send(view=view, ephemeral=True, delete_after=10)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 5. BUTTON CALLBACKS (Two Patterns)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PATTERN A: Class-based (recommended — clean, reusable)
+──────────────────────────────────────────────────────
+
+    class BuyButton(ui.Button["ShopView"]):
+        def __init__(self, product_id: str):
+            super().__init__(
+                label="Buy Now",
+                style=discord.ButtonStyle.primary,
+                emoji="🛒",
+                custom_id=f"buy_{product_id}"
+            )
+            self.product_id = product_id
+
+        async def callback(self, interaction: discord.Interaction):
+            if not await self.view.interaction_check(interaction):
+                return
+            # Handle purchase...
+            await interaction.response.send_message(
+                f"Added to cart!", ephemeral=True
+            )
+
+
+PATTERN B: Lambda/Inline (for simple cases)
+────────────────────────────────────────────
+
+    btn = ui.Button(label="Enter", style=discord.ButtonStyle.success, emoji="✅")
+    async def on_enter(interaction: discord.Interaction):
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message(
+                "Not allowed", ephemeral=True, delete_after=10
+            )
+        # Handle...
+    btn.callback = on_enter
+
+
+PATTERN C: @discord.ui.button decorator
+─────────────────────────────────────────
+
+    @discord.ui.button(label="Set Name", style=discord.ButtonStyle.primary, emoji="✏️", row=0)
+    async def set_name(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = NameModal()
+        await interaction.response.send_modal(modal)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 6. INTERACTION CHECK (Prevent other users from clicking)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add to every View class:
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    description="You are not allowed to use this interaction",
+                    color=color.error,
+                ),
+                ephemeral=True,
+                delete_after=10,
+            )
+            return False
+        return True
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 7. TIMEOUT HANDLING (Auto-disable after timeout)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 8. FULL VIEW CLASS STRUCTURE (Copy template)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+from discord import ui
+from discord.ext import commands
+import discord
+from instamart.style import color
+from instamart.style import emoji as e
+
+
+class BaseView(ui.LayoutView):
+    def __init__(self, bot, ctx, timeout=120):
+        super().__init__(timeout=timeout)
+        self.bot = bot
+        self.ctx = ctx
+        self.message: discord.Message = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    description="You are not allowed to use this interaction",
+                    color=color.error,
+                ),
+                ephemeral=True,
+                delete_after=10,
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
+
+class HomeView(BaseView):
+    def __init__(self, bot, ctx):
+        super().__init__(bot, ctx)
+        bot_name = self.bot.user.display_name
+
+        container = ui.Container(accent_color=color.black)
+
+        section = ui.Section(
+            ui.TextDisplay(f"### 👑 {bot_name}"),
+            ui.TextDisplay("Your premium ordering assistant"),
+            accessory=ui.Thumbnail(
+                media=discord.UnfurledMediaItem(url=self.bot.user.display_avatar.url),
+                description="Bot Avatar",
+            ),
+        )
+        container.add_item(section)
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+        container.add_item(ui.TextDisplay("-# Crafted by Parth.cd"))
+
+        self.add_item(container)
+
+        btn_row = ui.ActionRow()
+        btn_row.add_item(ShopButton())
+        btn_row.add_item(OrdersButton())
+        self.add_item(btn_row)
+
+
+    @discord.ui.button(label="🛒 Shop", style=discord.ButtonStyle.primary, row=0)
+    async def shop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self.interaction_check(interaction):
+            return
+        shop_view = ShopView(self.bot, self.ctx)
+        shop_view.message = interaction.message
+        await interaction.response.edit_message(view=shop_view)
+
+
+HOW TO CALL FROM A COMMAND:
+───────────────────────────
+
+    @commands.hybrid_command(name="shop")
+    async def shop(self, ctx: commands.Context):
+        if ctx.interaction and not ctx.interaction.response.is_done():
+            await ctx.defer()
+        view = ShopView(self.bot, ctx)
+        view.message = await ctx.send(view=view)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 9. MARKDOWN FORMATTING CHEAT SHEET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose                  Format
+───────────────────────  ─────────────────────────────────
+H1 heading               # Big Title
+H2 heading               ## Medium Title
+H3 heading               ### Small Title (use this most)
+Bold text                **text**
+Italic text              *text*
+Code/command             `text`
+Blockquote               > text
+Small footer text        -# text
+Relative timestamp       <t:1234567890:R>
+Full timestamp           <t:1234567890:F>
+User mention             <@user_id>
+Channel mention          <#channel_id>
+Image                    ![ ](image_url)
+Link                     [label](url)
+Divider line             ━━━━━━━━━━━━━━━━━━━━ (e.DIVIDER)
+Bullet point             •  (e.DOT)
+Arrow separator          ›  (e.ARROW_R)
+Small separator          ▸  (e.BULLET)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 10. ROUNDBOT SAMPLE FILES (for reference)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRIMARY REFERENCE:   reo/src/commands/help.py
+  → Full UI with HomeView, AllCommandsView, CategoryView, CommandView
+  → ModuleSelect dropdown, BackButton navigation
+  → AllButtons, ReportButton, ReportModal
+  → Container/Section/Thumbnail/Separator/TextDisplay usage
+
+SIMPLE UI REFERENCE: reo/src/commands/mention.py
+  → Minimal Container/Section/Thumbnail pattern
+  → Bot mention auto-reply with V2 components
+
+COLORS REFERENCE:    reo/style/color.py
+EMOJIS REFERENCE:    reo/style/emoji.py
+BUILD VIEW HELPER:   reo/style/embed_builder.py
+
+GIVEAWAY UI (complex): reo/src/commands/giveaway.py
+  → Multi-container layout
+  → Paginated views (Previous/Next)
+  → Status filters (Active/Ended)
+  → Persistent view (timeout=None) + dynamic button updates
+
+TICKET UI:          reo/src/commands/ticket.py
+  → Inline view building with ActionRow
+  → Close/cancel buttons
+
+TICKET PANEL:       reo/src/commands/ticket_panel.py
+  → Markdown-to-Container builder
+  → Ticket creation lifecycle
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 11. IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. NO embeds anywhere — Components V2 only
+2. Every reply must go through Container (success/error/info all)
+3. Footer always: "-# Crafted by Parth.cd"
+4. accent_color=color.black for all Containers (gold is for text/highlights)
+5. Max 1-2 emojis per message
+6. Gold (#FFD700) for headings and important text
+7. White for body text
+8. Gray (#808080) for secondary/muted text
+9. Black (#000000) for container backgrounds
+10. URL buttons (style=link) for external links
+11. Primary buttons for main CTA (Shop, Buy, Confirm)
+12. Secondary/danger for navigation/destructive actions
+13. interaction_check() on every view to prevent hijacking
+14. on_timeout() disables all components
+15. message reference stored as self.message for edit_message navigation
+
+=================================================================
+ END OF REFERENCE
+=================================================================

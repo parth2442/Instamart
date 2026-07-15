@@ -1,27 +1,23 @@
-import { EmbedBuilder } from 'discord.js';
-import { COLORS } from './config.js';
+import { ContainerBuilder, TextDisplayBuilder } from 'discord.js';
 
-const FOOTER = 'designed by Parth.cd';
-
-export function gold(text: string, emoji?: string): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(COLORS.gold)
-    .setDescription(emoji ? `${emoji} ${text}` : text)
-    .setFooter({ text: FOOTER });
+export function gold(text: string, emoji?: string): ContainerBuilder {
+  return new ContainerBuilder()
+    .setAccentColor(0x000000)
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(emoji ? `${emoji} ${text}` : text));
 }
 
-export function success(text: string): EmbedBuilder {
+export function success(text: string): ContainerBuilder {
   return gold(text, '\u{2705}');
 }
 
-export function error(text: string): EmbedBuilder {
+export function error(text: string): ContainerBuilder {
   return gold(text, '\u{274C}');
 }
 
-export function warning(text: string): EmbedBuilder {
+export function warning(text: string): ContainerBuilder {
   return gold(text, '\u{26A0}\u{FE0F}');
 }
 
-export function info(text: string, emoji?: string): EmbedBuilder {
+export function info(text: string, emoji?: string): ContainerBuilder {
   return gold(text, emoji);
 }

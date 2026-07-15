@@ -6,7 +6,7 @@ export const config = {
   clientId: process.env.CLIENT_ID || '',
   guildId: process.env.GUILD_ID || '',
   adminRoleId: process.env.ADMIN_ROLE_ID || '',
-  botOwnerId: process.env.BOT_OWNER_ID || '1379403772287127552',
+  botOwnerIds: (process.env.BOT_OWNER_IDS || '').split(',').filter(Boolean),
   prefix: process.env.PREFIX || '$',
 };
 
@@ -16,6 +16,12 @@ export const COLORS = {
   error: 0xFF1744,
   warning: 0xFFD600,
   info: 0xECEFF1,
+};
+
+export const UPI_PRESETS: Record<string, string> = {
+  silver: 'coder2442@okaxis',
+  gold: 'coder2442@okaxis',
+  diamond: 'coder2442@okaxis',
 };
 
 export const EMOJI = {

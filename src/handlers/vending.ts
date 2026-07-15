@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ComponentType, Interaction } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ComponentType, Interaction, MessageFlags } from 'discord.js';
 import { EMOJI } from '../config.js';
 import { formatCurrency, generateOrderId } from '../utils.js';
 import { vendingMachineEmbed, productDetailEmbed, cartEmbed, deliveryEmbed, orderEmbed } from '../embeds.js';
@@ -6,55 +6,88 @@ import * as db from '../database.js';
 import * as res from '../response.js';
 import type { Category, Product } from '../types.js';
 
-// Store pending direct-buy product info (userId -> productId)
-const pendingDirectBuys = new Map<string, number>();
+const pendingDirectBuys = new Map<string, { productId: number; createdAt: number }>();
 
 export function getPendingDirectBuy(userId: string): number | undefined {
-  const id = pendingDirectBuys.get(userId);
+  const entry = pendingDirectBuys.get(userId);
   pendingDirectBuys.delete(userId);
-  return id;
+  return entry?.productId;
 }
 
-export function vendingMachineRows(cats: Category[], products: Product[]): ActionRowBuilder<any>[] {
+// Cleanup stale direct buy sessions every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of pendingDirectBuys) {
+    if (now - entry.createdAt > 10 * 60 * 1000) {
+      pendingDirectBuys.delete(userId);
+    }
+  }
+}, 5 * 60 * 1000);
+
+export function vendingMachineRows(cats: Category[], products: Product[], invMap?: Map<number, { available: number; sold: number }>): ActionRowBuilder<any>[] {
   const rows: ActionRowBuilder<any>[] = [];
 
-  // Category selector
-  const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId('select_category')
-    .setPlaceholder('Browse categories...')
-    .addOptions(
-      cats.map(cat =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(cat.name)
-          .setValue(String(cat.id))
-          .setDescription(cat.description)
-          .setEmoji(cat.emoji)
+  const safeCats = cats.filter(c => c.name && c.name.length >= 1 && c.name.length <= 100);
+  if (safeCats.length > 0) {
+    rows.push(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('select_category')
+          .setPlaceholder('📂 Browse categories…')
+          .addOptions(
+            safeCats.slice(0, 25).map(cat => {
+              const opt = new StringSelectMenuOptionBuilder()
+                .setLabel(cat.name.slice(0, 100))
+                .setValue(String(cat.id));
+              if (cat.description) opt.setDescription(cat.description.slice(0, 100));
+              if (cat.emoji && cat.emoji.length > 0) {
+                try { opt.setEmoji(cat.emoji); } catch {}
+              }
+              return opt;
+            })
+          )
       )
     );
-
-  rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
-
-  // Product slot buttons (max 5 per row, 25 max)
-  const buttons = products.slice(0, 25).map(p =>
-    new ButtonBuilder()
-      .setCustomId(`slot_${p.slot_id}`)
-      .setLabel(p.slot_id)
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  // Split into rows of 5
-  for (let i = 0; i < buttons.length; i += 5) {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.slice(i, i + 5)));
   }
 
-  // Nav buttons
+  // Group slot buttons by row letter — just like a real vending keypad
+  const grouped = new Map<string, Product[]>();
+  for (const p of products.slice(0, 25)) {
+    const key = p.slot_id ? p.slot_id.charAt(0).toUpperCase() : '?';
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(p);
+  }
+
+  const MB_EMOJI = '\u{1F3E6}';
+  const ROW_STYLES = [ButtonStyle.Primary, ButtonStyle.Success, ButtonStyle.Primary, ButtonStyle.Success];
+  let styleIdx = 0;
+  for (const [_, prods] of grouped) {
+    const rowStyle = ROW_STYLES[styleIdx++ % ROW_STYLES.length];
+    const btns = prods.map(p => {
+      const cnt = invMap?.get(p.id);
+      const available = cnt ? cnt.available : 0;
+      const isOut = available === 0;
+      const style = isOut ? ButtonStyle.Danger : rowStyle;
+      const customId = 'slot_' + p.id;
+      return new ButtonBuilder()
+        .setCustomId(customId)
+        .setLabel((p.slot_id || '???').slice(0, 80))
+        .setEmoji(MB_EMOJI)
+        .setStyle(style)
+        .setDisabled(isOut);
+    });
+    for (let i = 0; i < btns.length; i += 5) {
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(btns.slice(i, i + 5)));
+    }
+  }
+
   rows.push(
     new ActionRowBuilder<ButtonBuilder>()
       .addComponents(
-        new ButtonBuilder().setCustomId('view_cart').setEmoji('\u{1F6D2}').setLabel('Cart').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('refresh_shop').setEmoji('\u{1F504}').setLabel('Refresh').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('back_to_shop').setEmoji('\u{1F3EA}').setLabel('Shop').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('cart_checkout').setEmoji('\u{2705}').setLabel('Checkout').setStyle(ButtonStyle.Success)
+        new ButtonBuilder().setCustomId('view_cart').setEmoji('🛒').setLabel('Cart').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('refresh_shop').setEmoji('🔄').setLabel('Refresh').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('back_to_shop').setEmoji('🏪').setLabel('Shop').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('cart_checkout').setEmoji('✅').setLabel('Checkout').setStyle(ButtonStyle.Success)
       )
   );
 
@@ -68,24 +101,25 @@ function getBotAvatar(interaction: any): string | undefined {
 export async function handleCategorySelect(interaction: any) {
   await interaction.deferUpdate();
   const catId = parseInt(interaction.values[0]);
-  const cat = db.getCategory(catId);
+  const cat = await db.getCategory(catId);
   if (!cat) return;
-  const products = db.getProductsByCategory(catId);
-  const bal = db.getUserBalance(interaction.user.id);
-  const embed = vendingMachineEmbed(cat, products, bal, getBotAvatar(interaction));
-  const rows = vendingMachineRows(db.getCategories(), products);
-  await interaction.editReply({ embeds: [embed], components: rows });
+  const products = await db.getProductsByCategory(catId);
+  const invMap = await buildInvMap(products);
+  const bal = await db.getUserBalance(interaction.user.id);
+  const View = vendingMachineEmbed(cat, products, bal, getBotAvatar(interaction), invMap);
+  const rows = vendingMachineRows(await db.getCategories(), products, invMap);
+  await interaction.editReply({ flags: MessageFlags.IsComponentsV2, embeds: [], components: [View, ...rows] });
 }
 
-export async function handleSlotButton(interaction: any, slotId: string) {
-  const product = db.getProductBySlot(slotId);
+export async function handleSlotButton(interaction: any, productId: number) {
+  const product = await db.getProductById(productId);
   if (!product) {
-    await interaction.reply({ embeds: [res.error('Product not found!')], ephemeral: true });
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.error('Product not found!')] });
     return;
   }
 
-  const bal = db.getUserBalance(interaction.user.id);
-  const embed = productDetailEmbed(product, bal, getBotAvatar(interaction));
+  const bal = await db.getUserBalance(interaction.user.id);
+  const View = productDetailEmbed(product, bal, getBotAvatar(interaction));
 
   const row = new ActionRowBuilder<ButtonBuilder>()
     .addComponents(
@@ -93,23 +127,21 @@ export async function handleSlotButton(interaction: any, slotId: string) {
       new ButtonBuilder().setCustomId(`wish_${product.id}`).setEmoji('\u{1F497}').setLabel('Wishlist').setStyle(ButtonStyle.Secondary)
     );
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [View, row] });
 }
 
 export async function handleBuyButton(interaction: any, productId: number) {
-  db.ensureUser(interaction.user.id);
-  const product = db.getProductById(productId);
+  await db.ensureUser(interaction.user.id);
+  const product = await db.getProductById(productId);
   if (!product) {
-    await interaction.reply({ embeds: [res.error('Product not found!')], ephemeral: true });
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.error('Product not found!')] });
     return;
   }
 
-  // Check if product uses inventory codes
-  const cnt = db.getInventoryCount(productId);
+  const cnt = await db.getInventoryCount(productId);
 
   if (cnt.available > 0) {
-    // Store for modal handler
-    pendingDirectBuys.set(interaction.user.id, productId);
+    pendingDirectBuys.set(interaction.user.id, { productId, createdAt: Date.now() });
 
     const modal = new ModalBuilder()
       .setCustomId('checkout_modal')
@@ -127,43 +159,44 @@ export async function handleBuyButton(interaction: any, productId: number) {
       );
 
     await interaction.showModal(modal);
-  } else if (product.stock !== -1 && product.stock <= 0) {
-    await interaction.reply({ embeds: [res.error(`${product.name} is sold out!`)], ephemeral: true });
+  } else if (product.stock === -1) {
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.error(`${product.name} has no available codes right now.`)] });
+    return;
+  } else if (cnt.available === 0 && product.stock <= 0) {
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.error(`${product.name} is sold out!`)] });
     return;
   } else {
-    // Manual stock - simple add to cart
-    db.addToCart(interaction.user.id, productId, 1);
-    await interaction.reply({ embeds: [res.info(`**${product.name}** added to cart!`, EMOJI.cart)], ephemeral: true });
+    await db.addToCart(interaction.user.id, productId, 1);
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.info(`**${product.name}** added to cart!`, EMOJI.cart)] });
   }
 }
 
 export async function handleWishlistButton(interaction: any, productId: number) {
-  db.ensureUser(interaction.user.id);
-  const product = db.getProductById(productId);
+  await db.ensureUser(interaction.user.id);
+  const product = await db.getProductById(productId);
   if (!product) {
-    await interaction.reply({ embeds: [res.error('Product not found!')], ephemeral: true });
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.error('Product not found!')] });
     return;
   }
-  db.addToWishlist(interaction.user.id, productId);
-  await interaction.reply({ embeds: [res.info(`**${product.name}** added to wishlist!`, EMOJI.wishlist)], ephemeral: true });
+  await db.addToWishlist(interaction.user.id, productId);
+  await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.info(`**${product.name}** added to wishlist!`, EMOJI.wishlist)] });
 }
 
 export async function handleViewCart(interaction: any) {
-  db.ensureUser(interaction.user.id);
-  const items = db.getCart(interaction.user.id);
-  const total = db.getCartTotal(interaction.user.id);
-  await interaction.reply({ embeds: [cartEmbed(items, total, getBotAvatar(interaction))], ephemeral: true });
+  await db.ensureUser(interaction.user.id);
+  const items = await db.getCart(interaction.user.id);
+  const total = await db.getCartTotal(interaction.user.id);
+  await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [cartEmbed(items, total, getBotAvatar(interaction))] });
 }
 
 export async function handleCartCheckout(interaction: any) {
-  db.ensureUser(interaction.user.id);
-  const items = db.getCart(interaction.user.id);
+  await db.ensureUser(interaction.user.id);
+  const items = await db.getCart(interaction.user.id);
   if (items.length === 0) {
-    await interaction.reply({ embeds: [res.warning('Your cart is empty!')], ephemeral: true });
+    await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.warning('Your cart is empty!')] });
     return;
   }
 
-  // Show checkout modal for coupon
   const modal = new ModalBuilder()
     .setCustomId('checkout_modal')
     .setTitle('Checkout')
@@ -182,39 +215,69 @@ export async function handleCartCheckout(interaction: any) {
   await interaction.showModal(modal);
 }
 
+export async function buildInvMap(products: any[]): Promise<Map<number, { available: number; sold: number }>> {
+  const map = new Map<number, { available: number; sold: number }>();
+  for (const p of products) {
+    const cnt = await db.getInventoryCount(p.id);
+    map.set(p.id, cnt);
+  }
+  return map;
+}
+
 export async function handleBackToShop(interaction: any) {
   await interaction.deferUpdate();
-  const cats = db.getCategories();
+  const cats = await db.getCategories();
   if (cats.length === 0) {
-    await interaction.editReply({ embeds: [res.error('No categories!')], components: [] });
+    await interaction.editReply({ flags: MessageFlags.IsComponentsV2, embeds: [], components: [res.error('No categories!')] });
     return;
   }
-  const products = db.getProductsByCategory(cats[0].id);
-  const bal = db.getUserBalance(interaction.user.id);
-  const embed = vendingMachineEmbed(cats[0], products, bal, getBotAvatar(interaction));
-  const rows = vendingMachineRows(cats, products);
-  await interaction.editReply({ embeds: [embed], components: rows });
+  const products = await db.getProductsByCategory(cats[0].id);
+  const invMap = await buildInvMap(products);
+  const bal = await db.getUserBalance(interaction.user.id);
+  const View = vendingMachineEmbed(cats[0], products, bal, getBotAvatar(interaction), invMap);
+  const rows = vendingMachineRows(cats, products, invMap);
+  await interaction.editReply({ flags: MessageFlags.IsComponentsV2, embeds: [], components: [View, ...rows] });
 }
 
 export async function handleRefreshShop(interaction: any) {
   await interaction.deferUpdate();
-  const cats = db.getCategories();
+  const cats = await db.getCategories();
   if (cats.length === 0) return;
-  // Find current category from embed
   let catId = cats[0].id;
-  const embed = interaction.message.embeds[0];
-  if (embed && embed.title) {
-    // Try to determine current category (simple approach: use first)
-  }
-  const products = db.getProductsByCategory(catId);
-  const bal = db.getUserBalance(interaction.user.id);
-  const embedUpdated = vendingMachineEmbed(cats[0], products, bal, getBotAvatar(interaction));
-  const rows = vendingMachineRows(cats, products);
-  await interaction.editReply({ embeds: [embedUpdated], components: rows });
+  const products = await db.getProductsByCategory(catId);
+  const invMap = await buildInvMap(products);
+  const bal = await db.getUserBalance(interaction.user.id);
+  const ViewUpdated = vendingMachineEmbed(cats[0], products, bal, getBotAvatar(interaction), invMap);
+  const rows = vendingMachineRows(cats, products, invMap);
+  await interaction.editReply({ flags: MessageFlags.IsComponentsV2, embeds: [], components: [ViewUpdated, ...rows] });
 }
 
 export async function handleCartClear(interaction: any) {
-  db.ensureUser(interaction.user.id);
-  db.clearCart(interaction.user.id);
-  await interaction.reply({ embeds: [res.success('Cart cleared!')], ephemeral: true });
+  await db.ensureUser(interaction.user.id);
+  await db.clearCart(interaction.user.id);
+  await interaction.reply({ flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, components: [res.success('Cart cleared!')] });
+}
+
+// ─── Update Vending Panel After Purchase ───
+
+export async function updateVendingPanel(client: any) {
+  try {
+    const channelId = await db.getShopChannel();
+    const msgId = await db.getSetting('shop_message_id');
+    if (!channelId || !msgId) return;
+
+    const channel = client.channels.cache.get(channelId);
+    if (!channel) return;
+    const msg = await channel.messages.fetch(msgId).catch(() => null);
+    if (!msg) return;
+
+    const cats = await db.getCategories();
+    if (cats.length === 0) return;
+    const products = await db.getProductsByCategory(cats[0].id);
+    const invMap = await buildInvMap(products);
+    const bal = 0;
+    const View = vendingMachineEmbed(cats[0], products, bal, client.user?.displayAvatarURL({ forceStatic: false, size: 256 }), invMap);
+    const rows = vendingMachineRows(cats, products, invMap);
+    await msg.edit({ flags: MessageFlags.IsComponentsV2, embeds: [], components: [View, ...rows] });
+  } catch {}
 }

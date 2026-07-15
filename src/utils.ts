@@ -5,13 +5,18 @@ export function formatCurrency(amount: number): string {
   return `₹${amount.toFixed(2)}`;
 }
 
-export function generateOrderId(): string {
+export async function generateOrderId(): Promise<string> {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = 'ORD-';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let result = 'ORD-';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const { exists } = await import('./database.js');
+    const dup = await exists('order', result);
+    if (!dup) return result;
   }
-  return result;
+  return 'ORD-' + Date.now().toString(36).toUpperCase();
 }
 
 export function sleep(ms: number): Promise<void> {
